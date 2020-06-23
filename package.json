@@ -1,0 +1,72 @@
+{
+	"name": "@untemps/user-permissions-utils",
+	"version": "0.0.0",
+	"description": "Collection of utility functions to manage user permissions",
+	"repository": "git@github.com:untemps/user-permissions-utils.git",
+	"keywords": [
+		"utils",
+		"permissions",
+		"javascript"
+	],
+	"author": "Vincent Le Badezet <v.lebadezet@untemps.net>",
+	"license": "MIT",
+	"private": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"main": "dist/index.js",
+	"module": "dist/index.es.js",
+	"devDependencies": {
+		"@babel/cli": "^7.10.1",
+		"@babel/core": "^7.10.2",
+		"@babel/plugin-proposal-class-properties": "^7.8.3",
+		"@babel/plugin-transform-runtime": "^7.10.1",
+		"@babel/preset-env": "^7.9.6",
+		"@rollup/plugin-babel": "^5.0.2",
+		"@rollup/plugin-commonjs": "^12.0.0",
+		"@rollup/plugin-node-resolve": "^8.0.0",
+		"@semantic-release/changelog": "^5.0.1",
+		"@semantic-release/git": "^9.0.0",
+		"@untemps/event-dispatcher": "^1.1.0",
+		"babel-jest": "^26.0.1",
+		"cross-env": "^7.0.2",
+		"husky": "^4.2.5",
+		"jest": "^26.0.1",
+		"prettier": "^2.0.5",
+		"rollup": "^2.12.0",
+		"rollup-plugin-filesize": "^9.0.0",
+		"rollup-plugin-terser": "^6.1.0",
+		"rollup-plugin-visualizer": "^4.0.4",
+		"semantic-release": "^17.0.7"
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "yarn test:ci && yarn prettier"
+		}
+	},
+	"jest": {
+		"coverageDirectory": "./coverage/",
+		"collectCoverage": true
+	},
+	"release": {
+		"branches": [
+			"master"
+		],
+		"plugins": [
+			"@semantic-release/commit-analyzer",
+			"@semantic-release/release-notes-generator",
+			"@semantic-release/npm",
+			"@semantic-release/changelog",
+			"@semantic-release/git"
+		]
+	},
+	"scripts": {
+		"test": "jest -u --watch",
+		"test:ci": "CI=true jest -u -b --coverage",
+		"build": " rm -rf dist && yarn build:cjs && yarn build:es && yarn build:umd",
+		"build:cjs": "cross-env NODE_ENV=production BABEL_ENV=cjs rollup -c",
+		"build:es": "cross-env NODE_ENV=production BABEL_ENV=es rollup -c",
+		"build:umd": "cross-env NODE_ENV=production BABEL_ENV=umd rollup -c",
+		"prettier": "prettier \"*/**/*.js\" --ignore-path ./.prettierignore --write"
+	}
+}
