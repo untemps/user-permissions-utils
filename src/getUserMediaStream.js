@@ -1,7 +1,7 @@
 import getPermission from './getPermission'
 
 /**
- * Returns a promise resolved when the media is authorized and the stream is retrieved
+ * Returns a promise resolved when the permission is granted by the user and the stream is retrieved
  * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param mediaStreamConstraints    Constraints object. @see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints
  * @returns {Promise}
@@ -9,7 +9,7 @@ import getPermission from './getPermission'
 export default async (permissionName, mediaStreamConstraints) => {
 	return new Promise(async (resolve, reject) => {
 		if (!navigator.mediaDevices) {
-			reject(new DOMException('NOT_FOUND_ERR', 'NotFoundError'))
+			reject(new DOMException('MediaDevices not supported', 'NOT_FOUND_ERR'))
 		} else {
 			try {
 				const [, stream] = await Promise.all([
