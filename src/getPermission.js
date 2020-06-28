@@ -6,31 +6,29 @@
 export default async (permissionName) => {
 	return new Promise(async (resolve, reject) => {
 		if (!navigator.permissions) {
-			reject(new DOMException('NOT_FOUND_ERR', 'NotFoundError'))
+			reject(new DOMException('Permissions not supported', 'NOT_FOUND_ERR'))
 		} else {
 			try {
 				const permissionStatus = await navigator.permissions.query({ name: permissionName })
-				switch (permissionStatus.state) {
-					case 'denied':
-						reject(new DOMException('NOT_ALLOWED_ERR', 'NotAllowedError'))
-						break
-					case 'prompt':
-						const onChange = (event) => {
-							permissionStatus.removeEventListener('change', onChange)
-							if (event.target.state === 'denied') {
-								reject(new DOMException('NOT_ALLOWED_ERR', 'NotAllowedError'))
-							} else {
-								resolve(event.target.state)
-							}
-						}
-						permissionStatus.addEventListener('change', onChange)
-						break
-					default:
-						resolve(permissionStatus.state)
+				const onChange = (event) => {
+					permissionStatus.removeEventListener('change', onChange)
+					resolveOrRejectBasedOnState(event.target.state, resolve, reject)
 				}
+				permissionStatus.addEventListener('change', onChange)
+				resolveOrRejectBasedOnState(permissionStatus.state, resolve, reject)
 			} catch (error) {
 				reject(error)
 			}
 		}
 	})
+}
+
+const resolveOrRejectBasedOnState = (state, resolve, reject) => {
+	switch (state) {
+		case 'denied':
+			reject(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+			break
+		default:
+			resolve(state)
+	}
 }
