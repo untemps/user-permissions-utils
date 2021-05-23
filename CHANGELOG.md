@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/untemps/user-permissions-utils/compare/v1.0.1...v1.0.2) (2021-05-23)
+
+
+### Bug Fixes
+
+* Replace error name when navigator.permissions is not supported ([#16](https://github.com/untemps/user-permissions-utils/issues/16)) ([f095e4b](https://github.com/untemps/user-permissions-utils/commit/f095e4bfac7488187dc722f0952eb13ceffee2ae))
+
 ## [1.0.1](https://github.com/untemps/user-permissions-utils/compare/v1.0.0...v1.0.1) (2020-06-28)
 
 
