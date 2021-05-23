@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/untemps/user-permissions-utils/compare/v1.0.3...v1.1.0) (2021-05-23)
+
+
+### Features
+
+* Expose flags to check browser support ([#22](https://github.com/untemps/user-permissions-utils/issues/22)) ([f1466d9](https://github.com/untemps/user-permissions-utils/commit/f1466d9f6ee3e31161e870380207971dffa388be))
+
 ## [1.0.3](https://github.com/untemps/user-permissions-utils/compare/v1.0.2...v1.0.3) (2021-05-23)
 
 ## [1.0.2](https://github.com/untemps/user-permissions-utils/compare/v1.0.1...v1.0.2) (2021-05-23)
