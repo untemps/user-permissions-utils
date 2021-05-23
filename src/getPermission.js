@@ -6,7 +6,7 @@
 export default async (permissionName) => {
 	return new Promise(async (resolve, reject) => {
 		if (!navigator.permissions) {
-			reject(new DOMException('Permissions not supported', 'NOT_FOUND_ERR'))
+			reject(new DOMException('Permissions not supported', 'NOT_SUPPORTED_ERR'))
 		} else {
 			try {
 				const permissionStatus = await navigator.permissions.query({ name: permissionName })

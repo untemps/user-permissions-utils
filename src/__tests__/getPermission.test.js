@@ -10,7 +10,8 @@ describe('getPermission', () => {
 			try {
 				await getPermission()
 			} catch (error) {
-				expect(error).toEqual(new DOMException('Permissions not supported', 'NOT_FOUND_ERR'))
+				expect(error.message).toEqual('Permissions not supported')
+				expect(error.name).toEqual('NOT_SUPPORTED_ERR')
 			}
 		})
 	})
@@ -46,7 +47,8 @@ describe('getPermission', () => {
 			try {
 				await getPermission()
 			} catch (error) {
-				expect(error).toEqual(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+				expect(error.message).toEqual('Permission denied')
+				expect(error.name).toEqual('NOT_ALLOWED_ERR')
 			}
 		})
 
@@ -77,7 +79,8 @@ describe('getPermission', () => {
 			try {
 				await getPermission()
 			} catch (error) {
-				expect(error).toEqual(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+				expect(error.message).toEqual('Permission denied')
+				expect(error.name).toEqual('NOT_ALLOWED_ERR')
 			}
 		})
 
