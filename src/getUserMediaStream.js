@@ -1,3 +1,5 @@
+import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
+import isNavigatorMediaDevicesSupported from './isNavigatorMediaDevicesSupported'
 import getPermission from './getPermission'
 
 /**
@@ -8,18 +10,18 @@ import getPermission from './getPermission'
  */
 export default async (permissionName, mediaStreamConstraints) => {
 	return new Promise(async (resolve, reject) => {
-		if (!navigator.mediaDevices) {
-			reject(new DOMException('MediaDevices not supported', 'NOT_FOUND_ERR'))
-		} else {
-			try {
-				const [, stream] = await Promise.all([
-					await getPermission(permissionName),
-					await navigator.mediaDevices.getUserMedia(mediaStreamConstraints),
-				])
-				resolve(stream)
-			} catch (error) {
-				reject(error)
-			}
+		if (!isNavigatorPermissionsSupported() || !isNavigatorMediaDevicesSupported()) {
+			reject(new DOMException('Navigator API: permissions or Navigator API: mediaDevices not supported', 'NOT_SUPPORTED_ERR'))
+		}
+
+		try {
+			const [, stream] = await Promise.all([
+				await getPermission(permissionName),
+				await navigator.mediaDevices.getUserMedia(mediaStreamConstraints),
+			])
+			resolve(stream)
+		} catch (error) {
+			reject(error)
 		}
 	})
 }

@@ -10,7 +10,7 @@ describe('getPermission', () => {
 			try {
 				await getPermission()
 			} catch (error) {
-				expect(error.message).toEqual('Permissions not supported')
+				expect(error.message).toEqual('Navigator API: permissions not supported')
 				expect(error.name).toEqual('NOT_SUPPORTED_ERR')
 			}
 		})
