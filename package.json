@@ -75,7 +75,7 @@
 	},
 	"scripts": {
 		"test": "jest -u --watch",
-		"test:ci": "CI=true jest -u -b --coverage",
+		"test:ci": "jest -u -b --coverage",
 		"build": " rm -rf dist && yarn build:cjs && yarn build:es && yarn build:umd",
 		"build:cjs": "cross-env NODE_ENV=production BABEL_ENV=cjs rollup -c",
 		"build:es": "cross-env NODE_ENV=production BABEL_ENV=es rollup -c",
