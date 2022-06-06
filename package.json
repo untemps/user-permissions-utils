@@ -1,6 +1,6 @@
 {
 	"name": "@untemps/user-permissions-utils",
-	"version": "1.1.10",
+	"version": "1.1.11",
 	"description": "Collection of utility functions to manage user permissions",
 	"repository": "git@github.com:untemps/user-permissions-utils.git",
 	"keywords": [
