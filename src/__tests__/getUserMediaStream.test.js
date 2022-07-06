@@ -52,7 +52,9 @@ describe('getUserMediaStream', () => {
 				try {
 					await getUserMediaStream()
 				} catch (error) {
-					expect(error.message).toEqual('Navigator API: permissions or Navigator API: mediaDevices not supported')
+					expect(error.message).toEqual(
+						'Navigator API: permissions or Navigator API: mediaDevices not supported'
+					)
 					expect(error.name).toEqual('NOT_SUPPORTED_ERR')
 				}
 			})

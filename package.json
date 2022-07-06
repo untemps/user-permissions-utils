@@ -28,8 +28,8 @@
 		"@rollup/plugin-babel": "^5.0.2",
 		"@rollup/plugin-commonjs": "^12.0.0",
 		"@rollup/plugin-node-resolve": "^8.0.0",
-		"@semantic-release/changelog": "^5.0.1",
-		"@semantic-release/git": "^9.0.0",
+		"@semantic-release/changelog": "^6.0.1",
+		"@semantic-release/git": "^10.0.1",
 		"@untemps/event-dispatcher": "^1.1.0",
 		"babel-jest": "^26.0.1",
 		"cross-env": "^7.0.2",
@@ -37,7 +37,7 @@
 		"jest": "^26.0.1",
 		"prettier": "^2.0.5",
 		"rollup": "^2.12.0",
-		"rollup-plugin-filesize": "^9.0.0",
+		"rollup-plugin-sizes": "^1.0.4",
 		"rollup-plugin-terser": "^6.1.0",
 		"rollup-plugin-visualizer": "^4.0.4",
 		"semantic-release": "^19.0.3"
@@ -76,7 +76,7 @@
 	"scripts": {
 		"test": "jest -u --watch",
 		"test:ci": "jest -u -b --coverage",
-		"build": " rm -rf dist && yarn build:cjs && yarn build:es && yarn build:umd",
+		"build": " rimraf dist && yarn build:cjs && yarn build:es && yarn build:umd",
 		"build:cjs": "cross-env NODE_ENV=production BABEL_ENV=cjs rollup -c",
 		"build:es": "cross-env NODE_ENV=production BABEL_ENV=es rollup -c",
 		"build:umd": "cross-env NODE_ENV=production BABEL_ENV=umd rollup -c",
