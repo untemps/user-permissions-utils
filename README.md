@@ -3,7 +3,7 @@
 Collection of utility functions to manage user permissions.
 
 ![npm](https://img.shields.io/npm/v/@untemps/user-permissions-utils?style=for-the-badge)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/untemps/user-permissions-utils/deploy?style=for-the-badge)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/untemps/user-permissions-utils/index.yml?style=for-the-badge)](https://github.com/untemps/user-permissions-utils/actions)
 ![Codecov](https://img.shields.io/codecov/c/github/untemps/user-permissions-utils?style=for-the-badge)
 
 ## Installation
