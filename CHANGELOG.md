@@ -1,3 +1,5 @@
+## [1.1.26](https://github.com/untemps/user-permissions-utils/compare/v1.1.25...v1.1.26) (2024-12-13)
+
 ## [1.1.25](https://github.com/untemps/user-permissions-utils/compare/v1.1.24...v1.1.25) (2024-11-22)
 
 ## [1.1.24](https://github.com/untemps/user-permissions-utils/compare/v1.1.23...v1.1.24) (2024-06-20)
