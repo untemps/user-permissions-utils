@@ -22,8 +22,6 @@ jobs:
             - run: npx semantic-release
               env:
                   GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-                  NPM_CONFIG_PROVENANCE: true
             - uses: codecov/codecov-action@v5
               with:
                   files: coverage/lcov.info
