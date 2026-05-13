@@ -1,3 +1,10 @@
+## [1.1.30](https://github.com/untemps/user-permissions-utils/compare/v1.1.29...v1.1.30) (2026-05-13)
+
+
+### Bug Fixes
+
+* Do not resolve promise when permission state is 'prompt' ([#79](https://github.com/untemps/user-permissions-utils/issues/79)) ([005441b](https://github.com/untemps/user-permissions-utils/commit/005441b384d81cbcb5e93249d12cc403810cb636))
+
 ## [1.1.29](https://github.com/untemps/user-permissions-utils/compare/v1.1.28...v1.1.29) (2026-05-13)
 
 ## [1.1.28](https://github.com/untemps/user-permissions-utils/compare/v1.1.27...v1.1.28) (2026-05-13)
