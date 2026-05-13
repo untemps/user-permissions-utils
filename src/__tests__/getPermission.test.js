@@ -17,17 +17,15 @@ describe('getPermission', () => {
 	})
 
 	describe('navigator.permissions is implemented', () => {
-		const mockPermissionsQuery = jest.fn()
+		const mockPermissionsQuery = vi.fn()
 
 		beforeAll(() => {
-			global.PermissionStatus = jest.fn(() => ({
-				state: 'granted',
-				addEventListener: jest.fn(),
-				removeEventListener: jest.fn(),
-			}))
-			global.Permissions = jest.fn(() => ({
-				query: mockPermissionsQuery,
-			}))
+			global.PermissionStatus = vi.fn(function () {
+				return { state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }
+			})
+			global.Permissions = vi.fn(function () {
+				return { query: mockPermissionsQuery }
+			})
 			global.navigator.permissions = new Permissions()
 		})
 
@@ -67,7 +65,7 @@ describe('getPermission', () => {
 		it('rejects promise since user has been prompted and has denied permissions', async () => {
 			const status = new PermissionStatus()
 			status.state = 'prompt'
-			status.addEventListener = jest.fn((e, cb) => {
+			status.addEventListener = vi.fn((e, cb) => {
 				const event = {
 					target: {
 						state: 'denied',
@@ -87,7 +85,7 @@ describe('getPermission', () => {
 		it('resolves promise since user has been prompted and has granted permissions', async () => {
 			const status = new PermissionStatus()
 			status.state = 'prompt'
-			status.addEventListener = jest.fn((e, cb) => {
+			status.addEventListener = vi.fn((e, cb) => {
 				const event = {
 					target: {
 						state: 'granted',

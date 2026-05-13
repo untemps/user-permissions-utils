@@ -22,23 +22,21 @@ describe('isNavigatorPermissionsSupported', () => {
 	})
 
 	describe('navigator.permissions is implemented', () => {
-		const mockPermissionsQuery = jest.fn()
-		const mockMediaDevicesGetUserMedia = jest.fn()
+		const mockPermissionsQuery = vi.fn()
+		const mockMediaDevicesGetUserMedia = vi.fn()
 
 		beforeAll(() => {
-			global.PermissionStatus = jest.fn(() => ({
-				state: 'granted',
-				addEventListener: jest.fn(),
-				removeEventListener: jest.fn(),
-			}))
-			global.Permissions = jest.fn(() => ({
-				query: mockPermissionsQuery,
-			}))
+			global.PermissionStatus = vi.fn(function () {
+				return { state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }
+			})
+			global.Permissions = vi.fn(function () {
+				return { query: mockPermissionsQuery }
+			})
 			global.navigator.permissions = new Permissions()
 
-			global.MediaDevices = jest.fn(() => ({
-				getUserMedia: mockMediaDevicesGetUserMedia,
-			}))
+			global.MediaDevices = vi.fn(function () {
+				return { getUserMedia: mockMediaDevicesGetUserMedia }
+			})
 			global.navigator.mediaDevices = new MediaDevices()
 		})
 
