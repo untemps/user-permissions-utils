@@ -27,10 +27,12 @@ export default async (permissionName) => {
 
 const resolveOrRejectBasedOnState = (state, resolve, reject) => {
 	switch (state) {
+		case 'granted':
+			resolve(state)
+			break
 		case 'denied':
 			reject(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
 			break
-		default:
-			resolve(state)
+		// 'prompt': stay pending — onChange will settle the promise once the user decides
 	}
 }
