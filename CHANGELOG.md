@@ -1,3 +1,10 @@
+## [1.1.31](https://github.com/untemps/user-permissions-utils/compare/v1.1.30...v1.1.31) (2026-05-13)
+
+
+### Bug Fixes
+
+* Return after reject() in unsupported-API guard clauses ([#80](https://github.com/untemps/user-permissions-utils/issues/80)) ([c43f87e](https://github.com/untemps/user-permissions-utils/commit/c43f87e5870c3383082042a0f880d3584112d0bd))
+
 ## [1.1.30](https://github.com/untemps/user-permissions-utils/compare/v1.1.29...v1.1.30) (2026-05-13)
 
 
