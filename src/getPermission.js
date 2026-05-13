@@ -13,12 +13,15 @@ export default async (permissionName) => {
 
 		try {
 			const permissionStatus = await navigator.permissions.query({ name: permissionName })
-			const onChange = (event) => {
-				permissionStatus.removeEventListener('change', onChange)
-				resolveOrRejectBasedOnState(event.target.state, resolve, reject)
+			if (permissionStatus.state === 'prompt') {
+				const onChange = (event) => {
+					permissionStatus.removeEventListener('change', onChange)
+					resolveOrRejectBasedOnState(event.target.state, resolve, reject)
+				}
+				permissionStatus.addEventListener('change', onChange)
+			} else {
+				resolveOrRejectBasedOnState(permissionStatus.state, resolve, reject)
 			}
-			permissionStatus.addEventListener('change', onChange)
-			resolveOrRejectBasedOnState(permissionStatus.state, resolve, reject)
 		} catch (error) {
 			reject(error)
 		}
