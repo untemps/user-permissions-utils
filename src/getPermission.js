@@ -8,7 +8,7 @@ import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
 export default async (permissionName) => {
 	return new Promise(async (resolve, reject) => {
 		if (!isNavigatorPermissionsSupported()) {
-			reject(new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR'))
+			return reject(new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR'))
 		}
 
 		try {
