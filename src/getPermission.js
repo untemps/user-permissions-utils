@@ -13,12 +13,15 @@ export default async (permissionName) => {
 
 		try {
 			const permissionStatus = await navigator.permissions.query({ name: permissionName })
-			const onChange = (event) => {
-				permissionStatus.removeEventListener('change', onChange)
-				resolveOrRejectBasedOnState(event.target.state, resolve, reject)
+			if (permissionStatus.state === 'prompt') {
+				const onChange = (event) => {
+					permissionStatus.removeEventListener('change', onChange)
+					resolveOrRejectBasedOnState(event.target.state, resolve, reject)
+				}
+				permissionStatus.addEventListener('change', onChange)
+			} else {
+				resolveOrRejectBasedOnState(permissionStatus.state, resolve, reject)
 			}
-			permissionStatus.addEventListener('change', onChange)
-			resolveOrRejectBasedOnState(permissionStatus.state, resolve, reject)
 		} catch (error) {
 			reject(error)
 		}
@@ -27,10 +30,12 @@ export default async (permissionName) => {
 
 const resolveOrRejectBasedOnState = (state, resolve, reject) => {
 	switch (state) {
+		case 'granted':
+			resolve(state)
+			break
 		case 'denied':
 			reject(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
 			break
-		default:
-			resolve(state)
+		// 'prompt': stay pending — onChange will settle the promise once the user decides
 	}
 }
