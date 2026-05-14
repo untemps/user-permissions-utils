@@ -51,7 +51,7 @@ describe('isNavigatorMediaDevicesSupported', () => {
 			global.MediaDevices.mockReset()
 		})
 
-		it('returns false as permissions is not supported', async () => {
+		it('returns true as mediaDevices is supported', async () => {
 			expect(isNavigatorMediaDevicesSupported()).toBeTruthy()
 		})
 	})

@@ -33,7 +33,7 @@ describe('isNavigatorPermissionsSupported', () => {
 			global.Permissions.mockReset()
 		})
 
-		it('returns false as permissions is not supported', async () => {
+		it('returns true as permissions is supported', async () => {
 			expect(isNavigatorPermissionsSupported()).toBeTruthy()
 		})
 	})
