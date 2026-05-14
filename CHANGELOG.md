@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/untemps/user-permissions-utils/compare/v1.1.38...v1.2.0) (2026-05-14)
+
+
+### Features
+
+* Add AbortSignal support for cancellation ([#91](https://github.com/untemps/user-permissions-utils/issues/91)) ([8eb13fc](https://github.com/untemps/user-permissions-utils/commit/8eb13fc08449699841a09b6f150955151acef7f7))
+
 ## [1.1.38](https://github.com/untemps/user-permissions-utils/compare/v1.1.37...v1.1.38) (2026-05-14)
 
 ## [1.1.37](https://github.com/untemps/user-permissions-utils/compare/v1.1.36...v1.1.37) (2026-05-14)
