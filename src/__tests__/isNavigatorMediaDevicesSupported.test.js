@@ -1,10 +1,5 @@
 import isNavigatorMediaDevicesSupported from '../isNavigatorMediaDevicesSupported'
-import {
-	setupPermissionsMock,
-	teardownPermissionsMock,
-	setupMediaDevicesMock,
-	teardownMediaDevicesMock,
-} from './testUtils'
+import { setupPermissionsMock, setupMediaDevicesMock, teardownPermissionsAndMediaDevicesMock } from './testUtils'
 
 describe('isNavigatorMediaDevicesSupported', () => {
 	describe('navigator.permissions is not implemented', () => {
@@ -39,10 +34,7 @@ describe('isNavigatorMediaDevicesSupported', () => {
 			mockPermissionsQuery.mockReset()
 			mockMediaDevicesGetUserMedia.mockReset()
 		})
-		afterAll(() => {
-			teardownPermissionsMock()
-			teardownMediaDevicesMock()
-		})
+		afterAll(teardownPermissionsAndMediaDevicesMock)
 
 		it('returns true as mediaDevices is supported', async () => {
 			expect(isNavigatorMediaDevicesSupported()).toBeTruthy()

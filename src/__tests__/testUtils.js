@@ -11,8 +11,9 @@ export const setupPermissionsMock = (mockQuery) => {
 }
 
 export const teardownPermissionsMock = () => {
-	global.PermissionStatus.mockReset()
-	global.Permissions.mockReset()
+	global.PermissionStatus = undefined
+	global.Permissions = undefined
+	global.navigator.permissions = undefined
 }
 
 export const setupMediaDevicesMock = (mockGetUserMedia) => {
@@ -23,5 +24,11 @@ export const setupMediaDevicesMock = (mockGetUserMedia) => {
 }
 
 export const teardownMediaDevicesMock = () => {
-	global.MediaDevices.mockReset()
+	global.MediaDevices = undefined
+	global.navigator.mediaDevices = undefined
+}
+
+export const teardownPermissionsAndMediaDevicesMock = () => {
+	teardownPermissionsMock()
+	teardownMediaDevicesMock()
 }
