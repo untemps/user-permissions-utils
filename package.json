@@ -19,7 +19,8 @@
 	"exports": {
 		".": {
 			"import": "./dist/index.es.js",
-			"require": "./dist/index.js"
+			"require": "./dist/index.js",
+			"default": "./dist/index.es.js"
 		}
 	},
 	"files": [
