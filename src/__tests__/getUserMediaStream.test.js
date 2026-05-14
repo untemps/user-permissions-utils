@@ -7,12 +7,10 @@ describe('getUserMediaStream', () => {
 		})
 
 		it('rejects promise', async () => {
-			try {
-				await getUserMediaStream()
-			} catch (error) {
-				expect(error.message).toEqual('Navigator API: permissions or Navigator API: mediaDevices not supported')
-				expect(error.name).toEqual('NOT_SUPPORTED_ERR')
-			}
+			await expect(getUserMediaStream()).rejects.toMatchObject({
+				message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
+				name: 'NOT_SUPPORTED_ERR',
+			})
 		})
 	})
 
@@ -47,14 +45,10 @@ describe('getUserMediaStream', () => {
 				const status = new PermissionStatus()
 				status.state = 'prompt'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
-				try {
-					await getUserMediaStream()
-				} catch (error) {
-					expect(error.message).toEqual(
-						'Navigator API: permissions or Navigator API: mediaDevices not supported'
-					)
-					expect(error.name).toEqual('NOT_SUPPORTED_ERR')
-				}
+				await expect(getUserMediaStream()).rejects.toMatchObject({
+					message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
+					name: 'NOT_SUPPORTED_ERR',
+				})
 			})
 		})
 
@@ -81,12 +75,10 @@ describe('getUserMediaStream', () => {
 				status.state = 'denied'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				try {
-					await getUserMediaStream()
-				} catch (error) {
-					expect(error.message).toEqual('Permission denied')
-					expect(error.name).toEqual('NOT_ALLOWED_ERR')
-				}
+				await expect(getUserMediaStream()).rejects.toMatchObject({
+					message: 'Permission denied',
+					name: 'NOT_ALLOWED_ERR',
+				})
 			})
 
 			it('resolves promise with stream since user has previously granted permission', async () => {
@@ -94,65 +86,39 @@ describe('getUserMediaStream', () => {
 				status.state = 'granted'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				try {
-					const stream = await getUserMediaStream()
-					expect(stream).toBe('foo')
-				} catch (error) {
-					throw error
-				}
+				await expect(getUserMediaStream()).resolves.toBe('foo')
 			})
 
 			it('rejects promise since user has been prompted and has denied permissions', async () => {
 				const status = new PermissionStatus()
 				status.state = 'prompt'
 				status.addEventListener = vi.fn((e, cb) => {
-					const event = {
-						target: {
-							state: 'denied',
-						},
-					}
-					cb(event)
+					cb({ target: { state: 'denied' } })
 				})
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				try {
-					await getUserMediaStream()
-				} catch (error) {
-					expect(error.message).toEqual('Permission denied')
-					expect(error.name).toEqual('NOT_ALLOWED_ERR')
-				}
+				await expect(getUserMediaStream()).rejects.toMatchObject({
+					message: 'Permission denied',
+					name: 'NOT_ALLOWED_ERR',
+				})
 			})
 
 			it('resolves promise with stream since user has been prompted and has granted permissions', async () => {
 				const status = new PermissionStatus()
 				status.state = 'prompt'
 				status.addEventListener = vi.fn((e, cb) => {
-					const event = {
-						target: {
-							state: 'granted',
-						},
-					}
-					cb(event)
+					cb({ target: { state: 'granted' } })
 				})
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				try {
-					const stream = await getUserMediaStream()
-					expect(stream).toBe('foo')
-				} catch (error) {
-					throw error
-				}
+				await expect(getUserMediaStream()).resolves.toBe('foo')
 			})
 
 			it('throws since error is raised from permissions', async () => {
 				mockPermissionsQuery.mockImplementationOnce(() => {
 					throw new Error('ERR')
 				})
-				try {
-					await getUserMediaStream()
-				} catch (error) {
-					expect(error).toEqual(new Error('ERR'))
-				}
+				await expect(getUserMediaStream()).rejects.toEqual(new Error('ERR'))
 			})
 
 			it('throws since error is raised from mediaDevices', async () => {
@@ -162,11 +128,7 @@ describe('getUserMediaStream', () => {
 				mockMediaDevicesGetUserMedia.mockImplementationOnce(() => {
 					throw new Error('ERR')
 				})
-				try {
-					await getUserMediaStream()
-				} catch (error) {
-					expect(error).toEqual(new Error('ERR'))
-				}
+				await expect(getUserMediaStream()).rejects.toEqual(new Error('ERR'))
 			})
 		})
 	})
