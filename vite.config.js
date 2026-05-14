@@ -12,7 +12,7 @@ export default defineConfig({
 				return 'index.umd.js'
 			},
 		},
-		sourcemap: true,
+		sourcemap: false,
 	},
 	test: {
 		environment: 'jsdom',
