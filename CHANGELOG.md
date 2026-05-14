@@ -1,3 +1,10 @@
+## [1.1.33](https://github.com/untemps/user-permissions-utils/compare/v1.1.32...v1.1.33) (2026-05-14)
+
+
+### Bug Fixes
+
+* Replace no-op Promise.all with explicit sequential awaits ([#82](https://github.com/untemps/user-permissions-utils/issues/82)) ([06c428c](https://github.com/untemps/user-permissions-utils/commit/06c428c3c066d86d80a861936f6b0080b8487581))
+
 ## [1.1.32](https://github.com/untemps/user-permissions-utils/compare/v1.1.31...v1.1.32) (2026-05-14)
 
 
