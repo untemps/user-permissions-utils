@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/untemps/user-permissions-utils/compare/v1.2.5...v1.3.0) (2026-05-14)
+
+
+### Features
+
+* Add AbortSignal support for cancellation to getUserMediaStream ([#110](https://github.com/untemps/user-permissions-utils/issues/110)) ([6f8d302](https://github.com/untemps/user-permissions-utils/commit/6f8d302ce3f6063e64708bca231a8706c62a63fd))
+
 ## [1.2.5](https://github.com/untemps/user-permissions-utils/compare/v1.2.4...v1.2.5) (2026-05-14)
 
 ## [1.2.4](https://github.com/untemps/user-permissions-utils/compare/v1.2.3...v1.2.4) (2026-05-14)
