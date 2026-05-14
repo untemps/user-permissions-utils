@@ -1,5 +1,7 @@
 import getPermission from '../getPermission'
 
+const flushMicrotasks = () => Promise.resolve()
+
 describe('getPermission', () => {
 	describe('navigator.permissions is not implemented', () => {
 		beforeAll(() => {
@@ -123,7 +125,7 @@ describe('getPermission', () => {
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				const promise = getPermission('microphone', { signal: controller.signal })
-				await Promise.resolve()
+				await flushMicrotasks()
 				controller.abort(reason)
 
 				await expect(promise).rejects.toBe(reason)
@@ -153,7 +155,7 @@ describe('getPermission', () => {
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				const promise = getPermission('microphone', { signal: controller.signal })
-				await Promise.resolve() // flush microtasks so query resolves and listeners register
+				await flushMicrotasks()
 				controller.abort()
 
 				await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
@@ -186,7 +188,7 @@ describe('getPermission', () => {
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				const promise = getPermission('microphone', { signal: controller.signal })
-				await Promise.resolve() // flush microtasks so query resolves and listeners register
+				await flushMicrotasks()
 				controller.abort()
 
 				await expect(promise).rejects.toMatchObject({ name: 'AbortError' })

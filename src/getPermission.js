@@ -11,17 +11,13 @@ export default async (permissionName, { signal } = {}) => {
 		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
 	}
 
-	if (signal?.aborted) {
-		throw signal.reason
-	}
+	signal?.throwIfAborted()
 
 	const permissionStatus = await navigator.permissions.query({ name: permissionName })
 
 	if (permissionStatus.state === 'prompt') {
 		return new Promise((resolve, reject) => {
-			if (signal?.aborted) {
-				return reject(signal.reason)
-			}
+			signal?.throwIfAborted()
 
 			const onChange = (event) => {
 				permissionStatus.removeEventListener('change', onChange)
