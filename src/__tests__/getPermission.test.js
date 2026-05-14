@@ -82,5 +82,116 @@ describe('getPermission', () => {
 			})
 			await expect(getPermission()).rejects.toEqual(new Error('ERR'))
 		})
+
+		describe('AbortSignal', () => {
+			it('rejects immediately when signal is already aborted', async () => {
+				const controller = new AbortController()
+				controller.abort()
+				await expect(getPermission('microphone', { signal: controller.signal })).rejects.toMatchObject({
+					name: 'AbortError',
+				})
+			})
+
+			it('rejects with custom reason when signal is already aborted with reason', async () => {
+				const controller = new AbortController()
+				const reason = new DOMException('Custom reason', 'AbortError')
+				controller.abort(reason)
+				await expect(getPermission('microphone', { signal: controller.signal })).rejects.toBe(reason)
+			})
+
+			it('rejects with custom reason when aborted with reason during query resolution', async () => {
+				const controller = new AbortController()
+				const reason = new DOMException('Custom reason', 'AbortError')
+				const status = new PermissionStatus()
+				status.state = 'prompt'
+				status.addEventListener = vi.fn()
+				status.removeEventListener = vi.fn()
+				mockPermissionsQuery.mockImplementationOnce(() => {
+					controller.abort(reason)
+					return Promise.resolve(status)
+				})
+				await expect(getPermission('microphone', { signal: controller.signal })).rejects.toBe(reason)
+			})
+
+			it('rejects with custom reason when aborted with reason while waiting in prompt state', async () => {
+				const controller = new AbortController()
+				const reason = new DOMException('Custom reason', 'AbortError')
+				const status = new PermissionStatus()
+				status.state = 'prompt'
+				status.addEventListener = vi.fn()
+				status.removeEventListener = vi.fn()
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				const promise = getPermission('microphone', { signal: controller.signal })
+				await Promise.resolve()
+				controller.abort(reason)
+
+				await expect(promise).rejects.toBe(reason)
+			})
+
+			it('resolves and cleans up abort listener when permission granted via onChange', async () => {
+				const controller = new AbortController()
+				const removeAbortSpy = vi.spyOn(controller.signal, 'removeEventListener')
+				const status = new PermissionStatus()
+				status.state = 'prompt'
+				status.addEventListener = vi.fn((e, cb) => {
+					cb({ target: { state: 'granted' } })
+				})
+				status.removeEventListener = vi.fn()
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				await expect(getPermission('microphone', { signal: controller.signal })).resolves.toBe('granted')
+				expect(removeAbortSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+			})
+
+			it('rejects when signal is aborted while waiting in prompt state', async () => {
+				const controller = new AbortController()
+				const status = new PermissionStatus()
+				status.state = 'prompt'
+				status.addEventListener = vi.fn()
+				status.removeEventListener = vi.fn()
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				const promise = getPermission('microphone', { signal: controller.signal })
+				await Promise.resolve() // flush microtasks so query resolves and listeners register
+				controller.abort()
+
+				await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+			})
+
+			it('rejects when signal is aborted during query resolution (race condition)', async () => {
+				const controller = new AbortController()
+				const status = new PermissionStatus()
+				status.state = 'prompt'
+				status.addEventListener = vi.fn()
+				status.removeEventListener = vi.fn()
+				// Abort synchronously inside the mock so signal is aborted when await resolves
+				mockPermissionsQuery.mockImplementationOnce(() => {
+					controller.abort()
+					return Promise.resolve(status)
+				})
+
+				await expect(getPermission('microphone', { signal: controller.signal })).rejects.toMatchObject({
+					name: 'AbortError',
+				})
+			})
+
+			it('cleans up onChange listener when aborted', async () => {
+				const controller = new AbortController()
+				const status = new PermissionStatus()
+				status.state = 'prompt'
+				const mockRemoveEventListener = vi.fn()
+				status.addEventListener = vi.fn()
+				status.removeEventListener = mockRemoveEventListener
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				const promise = getPermission('microphone', { signal: controller.signal })
+				await Promise.resolve() // flush microtasks so query resolves and listeners register
+				controller.abort()
+
+				await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+				expect(mockRemoveEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+			})
+		})
 	})
 })
