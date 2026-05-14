@@ -16,7 +16,7 @@ yarn add @untemps/user-permissions-utils
 
 `getPermission`:
 
-Returns a promise resolved when the permission is granted
+Returns a promise resolved when the permission is granted. Accepts an optional `signal` to cancel the pending wait.
 
 ```javascript
 import { getPermission } from '@untemps/user-permissions-utils'
@@ -29,6 +29,27 @@ const init = async () => {
         console.error(error)
     }
 }
+```
+
+To cancel a pending permission wait:
+
+```javascript
+import { getPermission } from '@untemps/user-permissions-utils'
+
+const controller = new AbortController()
+
+const init = async () => {
+    try {
+        await getPermission('microphone', { signal: controller.signal })
+        ...
+    } catch (error) {
+        if (error.name === 'AbortError') return
+        console.error(error)
+    }
+}
+
+// Cancel before the user responds to the permission dialog
+controller.abort()
 ```
 
 `getUserMediaStream`:

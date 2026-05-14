@@ -1,4 +1,7 @@
-export declare function getPermission(permissionName: PermissionName): Promise<PermissionState>
+export declare function getPermission(
+	permissionName: PermissionName,
+	options?: { signal?: AbortSignal }
+): Promise<PermissionState>
 export declare function getUserMediaStream(
 	permissionName: PermissionName,
 	constraints: MediaStreamConstraints
