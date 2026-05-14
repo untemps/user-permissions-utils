@@ -54,7 +54,7 @@ controller.abort()
 
 `getUserMediaStream`:
 
-Returns a promise resolved when the permission is granted and the stream is retrieved
+Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation.
 
 ```javascript
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
@@ -69,6 +69,27 @@ const init = async () => {
         console.error(error)
     }
 }
+```
+
+To cancel a pending stream acquisition:
+
+```javascript
+import { getUserMediaStream } from '@untemps/user-permissions-utils'
+
+const controller = new AbortController()
+
+const init = async () => {
+    try {
+        const stream = await getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+        ...
+    } catch (error) {
+        if (error.name === 'AbortError') return
+        console.error(error)
+    }
+}
+
+// Cancel the operation at any point (permission wait or stream acquisition)
+controller.abort()
 ```
 
 `isNavigatorPermissionsSupported`:
