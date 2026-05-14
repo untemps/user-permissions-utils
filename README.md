@@ -62,7 +62,6 @@ The `permissionName` and `mediaStreamConstraints` must match the same media devi
 |---|---|
 | `'microphone'` | `{ audio: true }` |
 | `'camera'` | `{ video: true }` |
-| `'camera'` + `'microphone'` | `{ audio: true, video: true }` |
 
 ```javascript
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
