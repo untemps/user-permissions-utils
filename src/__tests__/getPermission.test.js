@@ -7,12 +7,10 @@ describe('getPermission', () => {
 		})
 
 		it('rejects promise', async () => {
-			try {
-				await getPermission()
-			} catch (error) {
-				expect(error.message).toEqual('Navigator API: permissions not supported')
-				expect(error.name).toEqual('NOT_SUPPORTED_ERR')
-			}
+			await expect(getPermission()).rejects.toMatchObject({
+				message: 'Navigator API: permissions not supported',
+				name: 'NOT_SUPPORTED_ERR',
+			})
 		})
 	})
 
@@ -42,75 +40,47 @@ describe('getPermission', () => {
 			const status = new PermissionStatus()
 			status.state = 'denied'
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			try {
-				await getPermission()
-			} catch (error) {
-				expect(error.message).toEqual('Permission denied')
-				expect(error.name).toEqual('NOT_ALLOWED_ERR')
-			}
+			await expect(getPermission()).rejects.toMatchObject({
+				message: 'Permission denied',
+				name: 'NOT_ALLOWED_ERR',
+			})
 		})
 
 		it('resolves promise since user has previously granted permission', async () => {
 			const status = new PermissionStatus()
 			status.state = 'granted'
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			try {
-				const status = await getPermission()
-				expect(status).toBe('granted')
-			} catch (error) {
-				throw error
-			}
+			await expect(getPermission()).resolves.toBe('granted')
 		})
 
 		it('rejects promise since user has been prompted and has denied permissions', async () => {
 			const status = new PermissionStatus()
 			status.state = 'prompt'
 			status.addEventListener = vi.fn((e, cb) => {
-				const event = {
-					target: {
-						state: 'denied',
-					},
-				}
-				cb(event)
+				cb({ target: { state: 'denied' } })
 			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			try {
-				await getPermission()
-			} catch (error) {
-				expect(error.message).toEqual('Permission denied')
-				expect(error.name).toEqual('NOT_ALLOWED_ERR')
-			}
+			await expect(getPermission()).rejects.toMatchObject({
+				message: 'Permission denied',
+				name: 'NOT_ALLOWED_ERR',
+			})
 		})
 
 		it('resolves promise since user has been prompted and has granted permissions', async () => {
 			const status = new PermissionStatus()
 			status.state = 'prompt'
 			status.addEventListener = vi.fn((e, cb) => {
-				const event = {
-					target: {
-						state: 'granted',
-					},
-				}
-				cb(event)
+				cb({ target: { state: 'granted' } })
 			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			try {
-				const status = await getPermission()
-				expect(status).toBe('granted')
-			} catch (error) {
-				throw error
-			}
+			await expect(getPermission()).resolves.toBe('granted')
 		})
 
 		it('throws error', async () => {
 			mockPermissionsQuery.mockImplementationOnce(() => {
 				throw new Error('ERR')
 			})
-			try {
-				await getPermission()
-			} catch (error) {
-				expect(error).toEqual(new Error('ERR'))
-			}
+			await expect(getPermission()).rejects.toEqual(new Error('ERR'))
 		})
 	})
 })
