@@ -61,14 +61,10 @@ import { getUserMediaStream } from '@untemps/user-permissions-utils'
 
 const init = async () => {
     try {
-    	const stream = await getUserMediaStream('microphone', { audio: true })
-    	if(!!stream) {
-    	    const audioContext = new AudioContext()
-    	    const streamNode = audioContext.createMediaStreamSource(stream)
-            ...
-    	} else {
-    	    console.error('Stream is not available')
-    	}
+        const stream = await getUserMediaStream('microphone', { audio: true })
+        const audioContext = new AudioContext()
+        const streamNode = audioContext.createMediaStreamSource(stream)
+        ...
     } catch (error) {
         console.error(error)
     }
