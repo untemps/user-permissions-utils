@@ -1,6 +1,5 @@
 import getPermission from '../getPermission'
-
-const flushMicrotasks = () => Promise.resolve()
+import { flushMicrotasks } from './testUtils'
 
 describe('getPermission', () => {
 	describe('navigator.permissions is not implemented', () => {

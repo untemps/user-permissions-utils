@@ -1,4 +1,5 @@
 import getUserMediaStream from '../getUserMediaStream'
+import { flushMicrotasks } from './testUtils'
 
 describe('getUserMediaStream', () => {
 	describe('navigator.permissions is not implemented', () => {
@@ -129,8 +130,6 @@ describe('getUserMediaStream', () => {
 			})
 
 			describe('AbortSignal', () => {
-				const flushMicrotasks = () => Promise.resolve()
-
 				it('rejects immediately when signal is already aborted', async () => {
 					const controller = new AbortController()
 					controller.abort()
