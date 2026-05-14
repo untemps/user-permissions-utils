@@ -1,0 +1,7 @@
+export declare function getPermission(permissionName: PermissionName): Promise<PermissionState>
+export declare function getUserMediaStream(
+	permissionName: PermissionName,
+	constraints: MediaStreamConstraints
+): Promise<MediaStream>
+export declare function isNavigatorPermissionsSupported(): boolean
+export declare function isNavigatorMediaDevicesSupported(): boolean

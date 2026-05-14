@@ -19,8 +19,10 @@
 	},
 	"main": "dist/index.js",
 	"module": "dist/index.es.js",
+	"types": "dist/index.d.ts",
 	"exports": {
 		".": {
+			"types": "./dist/index.d.ts",
 			"import": "./dist/index.es.js",
 			"require": "./dist/index.js",
 			"default": "./dist/index.es.js"
@@ -65,7 +67,7 @@
 	"scripts": {
 		"test": "vitest",
 		"test:ci": "vitest run --coverage",
-		"build": "vite build",
+		"build": "vite build && cp src/index.d.ts dist/index.d.ts",
 		"prettier": "prettier \"*/**/*.js\" --ignore-path ./.prettierignore --write",
 		"prepare": "husky"
 	}
