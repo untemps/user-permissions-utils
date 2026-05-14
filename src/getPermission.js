@@ -3,7 +3,8 @@ import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
 /**
  * Returns a promise resolved when the permission is granted by the user
  * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
- * @param options.signal            Optional AbortSignal to cancel the pending permission wait
+ * @param {Object} [options]
+ * @param {AbortSignal} [options.signal]  Optional AbortSignal to cancel the pending permission wait
  * @returns {Promise}
  */
 export default async (permissionName, { signal } = {}) => {

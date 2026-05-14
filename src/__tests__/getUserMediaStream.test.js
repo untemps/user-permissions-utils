@@ -1,4 +1,5 @@
 import getUserMediaStream from '../getUserMediaStream'
+import { flushMicrotasks } from './testUtils'
 
 describe('getUserMediaStream', () => {
 	describe('navigator.permissions is not implemented', () => {
@@ -126,6 +127,62 @@ describe('getUserMediaStream', () => {
 					throw new Error('ERR')
 				})
 				await expect(getUserMediaStream()).rejects.toEqual(new Error('ERR'))
+			})
+
+			describe('AbortSignal', () => {
+				it('rejects immediately when signal is already aborted', async () => {
+					const controller = new AbortController()
+					controller.abort()
+					await expect(
+						getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					).rejects.toMatchObject({
+						name: 'AbortError',
+					})
+				})
+
+				it('rejects when signal is aborted during permission wait', async () => {
+					const controller = new AbortController()
+					const status = new PermissionStatus()
+					status.state = 'prompt'
+					status.addEventListener = vi.fn()
+					status.removeEventListener = vi.fn()
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+
+					const promise = getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					await flushMicrotasks()
+					controller.abort()
+
+					await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+				})
+
+				it('rejects when signal is aborted after permission granted but before getUserMedia', async () => {
+					const controller = new AbortController()
+					const status = new PermissionStatus()
+					status.state = 'granted'
+					mockPermissionsQuery.mockImplementationOnce(() => {
+						controller.abort()
+						return Promise.resolve(status)
+					})
+
+					await expect(
+						getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					).rejects.toMatchObject({
+						name: 'AbortError',
+					})
+					expect(mockMediaDevicesGetUserMedia).not.toHaveBeenCalled()
+				})
+
+				it('resolves with stream when signal is provided but not aborted', async () => {
+					const controller = new AbortController()
+					const status = new PermissionStatus()
+					status.state = 'granted'
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+					mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
+
+					await expect(
+						getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					).resolves.toBe('foo')
+				})
 			})
 		})
 	})

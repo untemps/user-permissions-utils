@@ -4,7 +4,8 @@ export declare function getPermission(
 ): Promise<'granted'>
 export declare function getUserMediaStream(
 	permissionName: PermissionName,
-	constraints: MediaStreamConstraints
+	constraints: MediaStreamConstraints,
+	options?: { signal?: AbortSignal }
 ): Promise<MediaStream>
 export declare function isNavigatorPermissionsSupported(): boolean
 export declare function isNavigatorMediaDevicesSupported(): boolean
