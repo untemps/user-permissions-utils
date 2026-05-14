@@ -68,7 +68,7 @@
 		"test": "vitest",
 		"test:ci": "vitest run --coverage",
 		"build": "vite build && cp src/index.d.ts dist/index.d.ts",
-		"prettier": "prettier \"*/**/*.js\" --ignore-path ./.prettierignore --write",
+		"prettier": "prettier \"./**/*.js\" --ignore-path ./.prettierignore --write",
 		"prepare": "husky"
 	}
 }
