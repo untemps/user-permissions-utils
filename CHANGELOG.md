@@ -1,3 +1,10 @@
+## [1.1.32](https://github.com/untemps/user-permissions-utils/compare/v1.1.31...v1.1.32) (2026-05-14)
+
+
+### Bug Fixes
+
+* Remove new Promise(async executor) anti-pattern in getPermission and getUserMediaStream ([#81](https://github.com/untemps/user-permissions-utils/issues/81)) ([30d60e6](https://github.com/untemps/user-permissions-utils/commit/30d60e660120493c3c55c5ef558f9186d637eef7))
+
 ## [1.1.31](https://github.com/untemps/user-permissions-utils/compare/v1.1.30...v1.1.31) (2026-05-13)
 
 
