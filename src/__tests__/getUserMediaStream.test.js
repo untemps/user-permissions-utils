@@ -42,9 +42,6 @@ describe('getUserMediaStream', () => {
 			})
 
 			it('rejects promise', async () => {
-				const status = new PermissionStatus()
-				status.state = 'prompt'
-				mockPermissionsQuery.mockResolvedValueOnce(status)
 				await expect(getUserMediaStream()).rejects.toMatchObject({
 					message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
 					name: 'NOT_SUPPORTED_ERR',
