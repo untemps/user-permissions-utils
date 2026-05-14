@@ -16,9 +16,6 @@ export default async (permissionName, mediaStreamConstraints) => {
 		)
 	}
 
-	const [, stream] = await Promise.all([
-		await getPermission(permissionName),
-		await navigator.mediaDevices.getUserMedia(mediaStreamConstraints),
-	])
-	return stream
+	await getPermission(permissionName)
+	return navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
 }
