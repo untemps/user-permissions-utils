@@ -56,14 +56,35 @@ controller.abort()
 
 Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation.
 
+The `permissionName` and `mediaStreamConstraints` must match the same media device:
+
+| `permissionName` | `mediaStreamConstraints` |
+|---|---|
+| `'microphone'` | `{ audio: true }` |
+| `'camera'` | `{ video: true }` |
+| `'camera'` + `'microphone'` | `{ audio: true, video: true }` |
+
 ```javascript
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
 
+// Microphone
 const init = async () => {
     try {
         const stream = await getUserMediaStream('microphone', { audio: true })
         const audioContext = new AudioContext()
         const streamNode = audioContext.createMediaStreamSource(stream)
+        ...
+    } catch (error) {
+        console.error(error)
+    }
+}
+
+// Camera
+const initCamera = async () => {
+    try {
+        const stream = await getUserMediaStream('camera', { video: true })
+        const videoElement = document.querySelector('video')
+        videoElement.srcObject = stream
         ...
     } catch (error) {
         console.error(error)
