@@ -7,7 +7,7 @@ module.exports = [
 	{
 		languageOptions: {
 			globals: globals.browser,
-			ecmaVersion: 2022,
+			ecmaVersion: 'latest',
 			sourceType: 'module',
 		},
 	},
@@ -15,14 +15,8 @@ module.exports = [
 		files: ['src/__tests__/**/*.js'],
 		languageOptions: {
 			globals: {
-				...globals.node,
-				vi: 'readonly',
-				describe: 'readonly',
-				it: 'readonly',
-				expect: 'readonly',
-				beforeAll: 'readonly',
-				beforeEach: 'readonly',
-				afterAll: 'readonly',
+				...globals.vitest,
+				global: 'readonly',
 			},
 		},
 	},
