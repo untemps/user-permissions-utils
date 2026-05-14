@@ -1,6 +1,6 @@
 import isNavigatorMediaDevicesSupported from '../isNavigatorMediaDevicesSupported'
 
-describe('isNavigatorPermissionsSupported', () => {
+describe('isNavigatorMediaDevicesSupported', () => {
 	describe('navigator.permissions is not implemented', () => {
 		beforeAll(() => {
 			global.navigator.permissions = undefined
