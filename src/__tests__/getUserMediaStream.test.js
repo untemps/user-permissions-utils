@@ -1,5 +1,11 @@
 import getUserMediaStream from '../getUserMediaStream'
-import { flushMicrotasks } from './testUtils'
+import {
+	flushMicrotasks,
+	setupPermissionsMock,
+	teardownPermissionsMock,
+	setupMediaDevicesMock,
+	teardownMediaDevicesMock,
+} from './testUtils'
 
 describe('getUserMediaStream', () => {
 	describe('navigator.permissions is not implemented', () => {
@@ -18,24 +24,9 @@ describe('getUserMediaStream', () => {
 	describe('navigator.permissions is implemented', () => {
 		const mockPermissionsQuery = vi.fn()
 
-		beforeAll(() => {
-			global.PermissionStatus = vi.fn(function () {
-				return { state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }
-			})
-			global.Permissions = vi.fn(function () {
-				return { query: mockPermissionsQuery }
-			})
-			global.navigator.permissions = new Permissions()
-		})
-
-		beforeEach(() => {
-			mockPermissionsQuery.mockReset()
-		})
-
-		afterAll(() => {
-			global.PermissionStatus.mockReset()
-			global.Permissions.mockReset()
-		})
+		beforeAll(() => setupPermissionsMock(mockPermissionsQuery))
+		beforeEach(() => mockPermissionsQuery.mockReset())
+		afterAll(teardownPermissionsMock)
 
 		describe('navigator.mediaDevices is not implemented', () => {
 			beforeAll(() => {
@@ -53,20 +44,9 @@ describe('getUserMediaStream', () => {
 		describe('navigator.mediaDevices is implemented', () => {
 			const mockMediaDevicesGetUserMedia = vi.fn()
 
-			beforeAll(() => {
-				global.MediaDevices = vi.fn(function () {
-					return { getUserMedia: mockMediaDevicesGetUserMedia }
-				})
-				global.navigator.mediaDevices = new MediaDevices()
-			})
-
-			beforeEach(() => {
-				mockMediaDevicesGetUserMedia.mockReset()
-			})
-
-			afterAll(() => {
-				global.MediaDevices.mockReset()
-			})
+			beforeAll(() => setupMediaDevicesMock(mockMediaDevicesGetUserMedia))
+			beforeEach(() => mockMediaDevicesGetUserMedia.mockReset())
+			afterAll(teardownMediaDevicesMock)
 
 			it('rejects promise since user has previously denied permissions', async () => {
 				const status = new PermissionStatus()
