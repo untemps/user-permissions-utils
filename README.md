@@ -54,6 +54,30 @@ const init = async () => {
 }
 ```
 
+`isNavigatorPermissionsSupported`:
+
+Returns `true` if the browser supports `navigator.permissions`
+
+```javascript
+import { isNavigatorPermissionsSupported } from '@untemps/user-permissions-utils'
+
+if (!isNavigatorPermissionsSupported()) {
+    console.warn('Navigator Permissions API is not supported in this browser')
+}
+```
+
+`isNavigatorMediaDevicesSupported`:
+
+Returns `true` if the browser supports `navigator.mediaDevices`
+
+```javascript
+import { isNavigatorMediaDevicesSupported } from '@untemps/user-permissions-utils'
+
+if (!isNavigatorMediaDevicesSupported()) {
+    console.warn('Navigator MediaDevices API is not supported in this browser')
+}
+```
+
 ## Todos
 
 -   Add permissions-based API:
