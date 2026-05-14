@@ -16,6 +16,13 @@
 	},
 	"main": "dist/index.js",
 	"module": "dist/index.es.js",
+	"exports": {
+		".": {
+			"import": "./dist/index.es.js",
+			"require": "./dist/index.js",
+			"default": "./dist/index.es.js"
+		}
+	},
 	"files": [
 		"dist"
 	],
