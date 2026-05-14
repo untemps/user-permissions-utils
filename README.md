@@ -106,4 +106,3 @@ if (!isNavigatorMediaDevicesSupported()) {
     -   geolocation
     -   notification
     -   ...
--   Add commitlint to ensure commit logs are valid
