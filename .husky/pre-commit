@@ -1,2 +1,2 @@
 #!/bin/sh
-yarn test:ci && yarn prettier
+yarn test:ci && yarn lint && yarn prettier
