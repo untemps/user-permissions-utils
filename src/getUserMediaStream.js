@@ -1,6 +1,5 @@
 import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
 import isNavigatorMediaDevicesSupported from './isNavigatorMediaDevicesSupported'
-import getPermission from './getPermission'
 
 /**
  * Returns a promise resolved when the permission is granted by the user and the stream is retrieved
@@ -18,7 +17,14 @@ export default async (permissionName, mediaStreamConstraints, { signal } = {}) =
 		)
 	}
 
-	await getPermission(permissionName, { signal })
+	signal?.throwIfAborted()
+
+	const permissionStatus = await navigator.permissions.query({ name: permissionName })
+
+	if (permissionStatus.state === 'denied') {
+		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+	}
+
 	signal?.throwIfAborted()
 	return navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
 }

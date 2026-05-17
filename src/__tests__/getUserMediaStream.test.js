@@ -1,6 +1,5 @@
 import getUserMediaStream from '../getUserMediaStream'
 import {
-	flushMicrotasks,
 	setupPermissionsMock,
 	teardownPermissionsMock,
 	setupMediaDevicesMock,
@@ -70,11 +69,10 @@ describe('getUserMediaStream', () => {
 			it('rejects promise since user has been prompted and has denied permissions', async () => {
 				const status = new PermissionStatus()
 				status.state = 'prompt'
-				status.addEventListener = vi.fn((e, cb) => {
-					cb({ target: { state: 'denied' } })
-				})
 				mockPermissionsQuery.mockResolvedValueOnce(status)
-				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
+				mockMediaDevicesGetUserMedia.mockRejectedValueOnce(
+					new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+				)
 				await expect(getUserMediaStream()).rejects.toMatchObject({
 					message: 'Permission denied',
 					name: 'NOT_ALLOWED_ERR',
@@ -84,9 +82,6 @@ describe('getUserMediaStream', () => {
 			it('resolves promise with stream since user has been prompted and has granted permissions', async () => {
 				const status = new PermissionStatus()
 				status.state = 'prompt'
-				status.addEventListener = vi.fn((e, cb) => {
-					cb({ target: { state: 'granted' } })
-				})
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
 				await expect(getUserMediaStream()).resolves.toBe('foo')
@@ -120,19 +115,19 @@ describe('getUserMediaStream', () => {
 					})
 				})
 
-				it('rejects when signal is aborted during permission wait', async () => {
+				it("rejects when signal is aborted after permission is 'prompt' but before getUserMedia", async () => {
 					const controller = new AbortController()
 					const status = new PermissionStatus()
 					status.state = 'prompt'
-					status.addEventListener = vi.fn()
-					status.removeEventListener = vi.fn()
-					mockPermissionsQuery.mockResolvedValueOnce(status)
+					mockPermissionsQuery.mockImplementationOnce(() => {
+						controller.abort()
+						return Promise.resolve(status)
+					})
 
-					const promise = getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
-					await flushMicrotasks()
-					controller.abort()
-
-					await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+					await expect(
+						getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					).rejects.toMatchObject({ name: 'AbortError' })
+					expect(mockMediaDevicesGetUserMedia).not.toHaveBeenCalled()
 				})
 
 				it('rejects when signal is aborted after permission granted but before getUserMedia', async () => {
