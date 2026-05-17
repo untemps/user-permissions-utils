@@ -1,5 +1,6 @@
 import getUserMediaStream from '../getUserMediaStream'
 import {
+	flushMicrotasks,
 	setupPermissionsMock,
 	teardownPermissionsMock,
 	setupMediaDevicesMock,
@@ -145,6 +146,21 @@ describe('getUserMediaStream', () => {
 						name: 'AbortError',
 					})
 					expect(mockMediaDevicesGetUserMedia).not.toHaveBeenCalled()
+				})
+
+				it('rejects when signal is aborted during getUserMedia', async () => {
+					const controller = new AbortController()
+					const status = new PermissionStatus()
+					status.state = 'granted'
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+					mockMediaDevicesGetUserMedia.mockImplementationOnce(() => new Promise(() => {}))
+
+					const promise = getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					await flushMicrotasks()
+					controller.abort()
+
+					await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+					expect(mockMediaDevicesGetUserMedia).toHaveBeenCalledOnce()
 				})
 
 				it('resolves with stream when signal is provided but not aborted', async () => {
