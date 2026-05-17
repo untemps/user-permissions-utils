@@ -4,6 +4,9 @@ let activeController = null
 let activeStream = null
 
 const WATCHED_PERMISSIONS = ['microphone', 'camera']
+const STATE_DOT_CLASS = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
+const STATE_LOG_TYPE = { granted: 'success', denied: 'error', prompt: '' }
+const logEl = document.getElementById('log')
 
 document.addEventListener('DOMContentLoaded', () => {
 	initSupportStatus()
@@ -38,10 +41,7 @@ function initPermissionStates(permissionNames) {
 			renderPermissionState(name, status.state)
 			status.addEventListener('change', () => {
 				renderPermissionState(name, status.state)
-				log(
-					`permission "${name}" changed → ${status.state}`,
-					status.state === 'granted' ? 'success' : status.state === 'denied' ? 'error' : ''
-				)
+				log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
 			})
 		} catch (err) {
 			renderPermissionState(name, 'error')
@@ -53,7 +53,7 @@ function initPermissionStates(permissionNames) {
 function renderPermissionState(name, state) {
 	const dot = document.getElementById(`dot-permission-${name}`)
 	const label = document.getElementById(`permission-${name}`)
-	dot.className = `dot ${state === 'granted' ? 'supported' : state === 'denied' ? 'unsupported' : 'prompt'}`
+	dot.className = `dot ${STATE_DOT_CLASS[state]}`
 	label.textContent = state
 }
 
@@ -110,8 +110,6 @@ function setResult(id, text, type) {
 }
 
 function log(message, type = '') {
-	const logEl = document.getElementById('log')
-
 	const empty = logEl.querySelector('.empty-log')
 	if (empty) empty.remove()
 
