@@ -115,7 +115,7 @@ describe('getUserMediaStream', () => {
 					})
 				})
 
-				it('rejects when signal is aborted during permission wait', async () => {
+				it("rejects when signal is aborted after permission is 'prompt' but before getUserMedia", async () => {
 					const controller = new AbortController()
 					const status = new PermissionStatus()
 					status.state = 'prompt'
