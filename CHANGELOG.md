@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/untemps/user-permissions-utils/compare/v1.3.0...v1.3.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* Resolve getUserMediaStream deadlock when permission is in 'prompt' state ([#119](https://github.com/untemps/user-permissions-utils/issues/119)) ([78e2aa9](https://github.com/untemps/user-permissions-utils/commit/78e2aa993cb6980600b1093a18b3288a5429a143))
+
 # [1.3.0](https://github.com/untemps/user-permissions-utils/compare/v1.2.5...v1.3.0) (2026-05-14)
 
 
