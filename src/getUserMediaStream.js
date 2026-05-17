@@ -26,5 +26,17 @@ export default async (permissionName, mediaStreamConstraints, { signal } = {}) =
 	}
 
 	signal?.throwIfAborted()
-	return navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
+
+	const mediaPromise = navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
+	if (!signal) return mediaPromise
+
+	let onAbort
+	const abortPromise = new Promise((_, reject) => {
+		onAbort = () => reject(signal.reason)
+		signal.addEventListener('abort', onAbort, { once: true })
+	})
+
+	return Promise.race([mediaPromise, abortPromise]).finally(() => {
+		signal.removeEventListener('abort', onAbort)
+	})
 }
