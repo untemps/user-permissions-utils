@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/untemps/user-permissions-utils/compare/v1.3.1...v1.3.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* Forward AbortSignal to getUserMedia via Promise.race ([#122](https://github.com/untemps/user-permissions-utils/issues/122)) ([f553efc](https://github.com/untemps/user-permissions-utils/commit/f553efccff822d7e5e77a55fa9ce72e0de7dc5bd))
+
 ## [1.3.1](https://github.com/untemps/user-permissions-utils/compare/v1.3.0...v1.3.1) (2026-05-17)
 
 
