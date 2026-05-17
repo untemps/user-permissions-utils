@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>user-permissions-utils — demo</title>
+		<style>
+			*,
+			*::before,
+			*::after {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+
+			:root {
+				--bg: #0f1117;
+				--surface: #1a1d27;
+				--border: #2a2d3a;
+				--text: #e2e8f0;
+				--muted: #64748b;
+				--accent: #6366f1;
+				--success: #22c55e;
+				--error: #ef4444;
+				--warning: #f59e0b;
+				--radius: 8px;
+				--font: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+			}
+
+			body {
+				background: var(--bg);
+				color: var(--text);
+				font-family: var(--font);
+				font-size: 13px;
+				line-height: 1.6;
+				min-height: 100vh;
+				padding: 32px 16px;
+			}
+
+			.container {
+				max-width: 680px;
+				margin: 0 auto;
+				display: flex;
+				flex-direction: column;
+				gap: 16px;
+			}
+
+			header {
+				display: flex;
+				align-items: baseline;
+				gap: 12px;
+				padding-bottom: 16px;
+				border-bottom: 1px solid var(--border);
+			}
+
+			header h1 {
+				font-size: 15px;
+				font-weight: 600;
+				color: var(--text);
+			}
+
+			header span {
+				font-size: 11px;
+				color: var(--muted);
+			}
+
+			.card {
+				background: var(--surface);
+				border: 1px solid var(--border);
+				border-radius: var(--radius);
+				overflow: hidden;
+			}
+
+			.card-header {
+				padding: 10px 16px;
+				border-bottom: 1px solid var(--border);
+				font-size: 11px;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+			}
+
+			.card-body {
+				padding: 16px;
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+
+			.support-row {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+			}
+
+			.dot {
+				width: 7px;
+				height: 7px;
+				border-radius: 50%;
+				background: var(--muted);
+				flex-shrink: 0;
+			}
+
+			.dot.supported {
+				background: var(--success);
+			}
+
+			.dot.unsupported {
+				background: var(--error);
+			}
+
+			.support-label {
+				color: var(--muted);
+				min-width: 150px;
+			}
+
+			.support-value {
+				color: var(--text);
+			}
+
+			.btn-row {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex-wrap: wrap;
+			}
+
+			button {
+				background: transparent;
+				border: 1px solid var(--border);
+				color: var(--text);
+				font-family: var(--font);
+				font-size: 12px;
+				padding: 6px 14px;
+				border-radius: var(--radius);
+				cursor: pointer;
+				transition:
+					border-color 120ms,
+					color 120ms;
+			}
+
+			button:hover {
+				border-color: var(--accent);
+				color: var(--accent);
+			}
+
+			button:active {
+				opacity: 0.7;
+			}
+
+			button.danger {
+				border-color: #3a1f1f;
+				color: var(--error);
+			}
+
+			button.danger:hover {
+				border-color: var(--error);
+			}
+
+			.result {
+				font-size: 12px;
+				padding: 4px 0;
+				color: var(--muted);
+				min-height: 24px;
+			}
+
+			.result--success {
+				color: var(--success);
+			}
+
+			.result--error {
+				color: var(--error);
+			}
+
+			.result--warning {
+				color: var(--warning);
+			}
+
+			.result--pending {
+				color: var(--muted);
+			}
+
+			.log-entries {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				max-height: 200px;
+				overflow-y: auto;
+			}
+
+			.log-entry {
+				color: var(--muted);
+				font-size: 11px;
+				line-height: 1.5;
+			}
+
+			.log-entry .time {
+				color: #3a3d4a;
+				margin-right: 8px;
+			}
+
+			.log-entry.success .msg {
+				color: var(--success);
+			}
+
+			.log-entry.error .msg {
+				color: var(--error);
+			}
+
+			.log-entry.warning .msg {
+				color: var(--warning);
+			}
+
+			.empty-log {
+				color: #2a2d3a;
+				font-size: 11px;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<header>
+				<h1>user-permissions-utils</h1>
+				<span>dev demo</span>
+			</header>
+
+			<!-- API Support -->
+			<div class="card">
+				<div class="card-header">API Support</div>
+				<div class="card-body">
+					<div class="support-row">
+						<div class="dot" id="dot-permissions"></div>
+						<span class="support-label">Permissions API</span>
+						<span class="support-value" id="permissions-support">—</span>
+					</div>
+					<div class="support-row">
+						<div class="dot" id="dot-mediadevices"></div>
+						<span class="support-label">MediaDevices API</span>
+						<span class="support-value" id="mediadevices-support">—</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- getPermission -->
+			<div class="card">
+				<div class="card-header">getPermission</div>
+				<div class="card-body">
+					<div class="btn-row">
+						<button data-action="getPermission" data-permission="microphone">microphone</button>
+						<button data-action="getPermission" data-permission="camera">camera</button>
+					</div>
+					<div class="result" id="permission-result"></div>
+				</div>
+			</div>
+
+			<!-- getUserMediaStream -->
+			<div class="card">
+				<div class="card-header">getUserMediaStream</div>
+				<div class="card-body">
+					<div class="btn-row">
+						<button data-action="getUserMediaStream" data-permission="microphone" data-constraints='{"audio":true}'>
+							microphone
+						</button>
+						<button data-action="getUserMediaStream" data-permission="camera" data-constraints='{"video":true}'>
+							camera
+						</button>
+						<button id="abort-btn" class="danger">abort</button>
+					</div>
+					<div class="result" id="stream-result"></div>
+				</div>
+			</div>
+
+			<!-- Log -->
+			<div class="card">
+				<div class="card-header">Log</div>
+				<div class="card-body">
+					<div class="log-entries" id="log">
+						<div class="empty-log">— no events yet —</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script type="module" src="./main.js"></script>
+	</body>
+</html>
