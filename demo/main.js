@@ -1,9 +1,4 @@
-import {
-	isNavigatorPermissionsSupported,
-	isNavigatorMediaDevicesSupported,
-	getPermission,
-	getUserMediaStream,
-} from '../src/index.js'
+import { isNavigatorPermissionsSupported, isNavigatorMediaDevicesSupported, getUserMediaStream } from '../src/index.js'
 
 let activeController = null
 let activeStream = null
@@ -37,18 +32,35 @@ function setSupport(key, ok) {
 	document.getElementById(`${key}-support`).textContent = ok ? 'supported' : 'not supported'
 }
 
+const permissionWatchers = {}
+
 async function handleGetPermission(permissionName) {
 	setResult('permission-result', `querying ${permissionName}…`, 'pending')
-	log(`getPermission("${permissionName}") →`, 'pending')
 
 	try {
-		const state = await getPermission(permissionName)
-		setResult('permission-result', `→ ${state}`, 'success')
-		log(`getPermission("${permissionName}") → ${state}`, 'success')
+		const status = await navigator.permissions.query({ name: permissionName })
+
+		showPermissionState(permissionName, status.state)
+
+		if (permissionWatchers[permissionName]) {
+			permissionWatchers[permissionName].removeEventListener('change', permissionWatchers[permissionName]._cb)
+		}
+
+		const onChange = () => showPermissionState(permissionName, status.state)
+		status._cb = onChange
+		status.addEventListener('change', onChange)
+		permissionWatchers[permissionName] = status
 	} catch (err) {
 		setResult('permission-result', `→ ${err.name}: ${err.message}`, 'error')
 		log(`getPermission("${permissionName}") ✗ ${err.name}: ${err.message}`, 'error')
 	}
+}
+
+function showPermissionState(permissionName, state) {
+	const type = state === 'granted' ? 'success' : state === 'denied' ? 'error' : 'warning'
+	const suffix = state === 'prompt' ? ' — no prompt yet (grant via getUserMediaStream)' : ''
+	setResult('permission-result', `→ ${state}${suffix}`, type)
+	log(`getPermission("${permissionName}") → ${state}`, type)
 }
 
 async function handleGetUserMediaStream(permissionName, constraints) {

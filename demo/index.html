@@ -216,6 +216,12 @@
 				color: #2a2d3a;
 				font-size: 11px;
 			}
+
+			.note {
+				font-size: 11px;
+				color: var(--muted);
+				line-height: 1.5;
+			}
 		</style>
 	</head>
 	<body>
@@ -246,6 +252,7 @@
 			<div class="card">
 				<div class="card-header">getPermission</div>
 				<div class="card-body">
+					<p class="note">Reads current permission state — does not trigger a browser prompt. Updates live when state changes.</p>
 					<div class="btn-row">
 						<button data-action="getPermission" data-permission="microphone">microphone</button>
 						<button data-action="getPermission" data-permission="camera">camera</button>
