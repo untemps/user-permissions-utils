@@ -5,10 +5,7 @@ let activeStream = null
 
 document.addEventListener('DOMContentLoaded', () => {
 	initSupportStatus()
-
-	document.querySelectorAll('[data-action="getPermission"]').forEach((btn) => {
-		btn.addEventListener('click', () => handleGetPermission(btn.dataset.permission))
-	})
+	initPermissionStates(['microphone', 'camera'])
 
 	document.querySelectorAll('[data-action="getUserMediaStream"]').forEach((btn) => {
 		btn.addEventListener('click', () =>
@@ -32,35 +29,30 @@ function setSupport(key, ok) {
 	document.getElementById(`${key}-support`).textContent = ok ? 'supported' : 'not supported'
 }
 
-const permissionWatchers = {}
-
-async function handleGetPermission(permissionName) {
-	setResult('permission-result', `querying ${permissionName}…`, 'pending')
-
-	try {
-		const status = await navigator.permissions.query({ name: permissionName })
-
-		showPermissionState(permissionName, status.state)
-
-		if (permissionWatchers[permissionName]) {
-			permissionWatchers[permissionName].removeEventListener('change', permissionWatchers[permissionName]._cb)
+function initPermissionStates(permissionNames) {
+	permissionNames.forEach(async (name) => {
+		try {
+			const status = await navigator.permissions.query({ name })
+			renderPermissionState(name, status.state)
+			status.addEventListener('change', () => {
+				renderPermissionState(name, status.state)
+				log(
+					`permission "${name}" changed → ${status.state}`,
+					status.state === 'granted' ? 'success' : status.state === 'denied' ? 'error' : ''
+				)
+			})
+		} catch (err) {
+			renderPermissionState(name, 'error')
+			log(`getPermission("${name}") ✗ ${err.name}: ${err.message}`, 'error')
 		}
-
-		const onChange = () => showPermissionState(permissionName, status.state)
-		status._cb = onChange
-		status.addEventListener('change', onChange)
-		permissionWatchers[permissionName] = status
-	} catch (err) {
-		setResult('permission-result', `→ ${err.name}: ${err.message}`, 'error')
-		log(`getPermission("${permissionName}") ✗ ${err.name}: ${err.message}`, 'error')
-	}
+	})
 }
 
-function showPermissionState(permissionName, state) {
-	const type = state === 'granted' ? 'success' : state === 'denied' ? 'error' : 'warning'
-	const suffix = state === 'prompt' ? ' — no prompt yet (grant via getUserMediaStream)' : ''
-	setResult('permission-result', `→ ${state}${suffix}`, type)
-	log(`getPermission("${permissionName}") → ${state}`, type)
+function renderPermissionState(name, state) {
+	const dot = document.getElementById(`dot-permission-${name}`)
+	const label = document.getElementById(`permission-${name}`)
+	dot.className = `dot ${state === 'granted' ? 'supported' : state === 'denied' ? 'unsupported' : 'prompt'}`
+	label.textContent = state
 }
 
 async function handleGetUserMediaStream(permissionName, constraints) {
