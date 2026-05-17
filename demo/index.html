@@ -220,6 +220,12 @@
 			.dot.prompt {
 				background: var(--warning);
 			}
+
+			.note {
+				font-size: 11px;
+				color: var(--muted);
+				line-height: 1.5;
+			}
 		</style>
 	</head>
 	<body>
@@ -260,6 +266,12 @@
 						<span class="support-label">camera</span>
 						<span class="support-value" id="permission-camera">—</span>
 					</div>
+					<div class="btn-row">
+						<button id="refresh-permissions-btn">refresh</button>
+					</div>
+					<p class="note" id="reset-hint" hidden>
+						To reset permissions to 'prompt', click the lock icon in the browser address bar → reset permissions.
+					</p>
 				</div>
 			</div>
 

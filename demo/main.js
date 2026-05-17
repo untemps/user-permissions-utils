@@ -3,9 +3,15 @@ import { isNavigatorPermissionsSupported, isNavigatorMediaDevicesSupported, getU
 let activeController = null
 let activeStream = null
 
+const WATCHED_PERMISSIONS = ['microphone', 'camera']
+
 document.addEventListener('DOMContentLoaded', () => {
 	initSupportStatus()
-	initPermissionStates(['microphone', 'camera'])
+	initPermissionStates(WATCHED_PERMISSIONS)
+
+	document
+		.getElementById('refresh-permissions-btn')
+		.addEventListener('click', () => refreshPermissionStates(WATCHED_PERMISSIONS))
 
 	document.querySelectorAll('[data-action="getUserMediaStream"]').forEach((btn) => {
 		btn.addEventListener('click', () =>
@@ -46,6 +52,22 @@ function initPermissionStates(permissionNames) {
 			log(`getPermission("${name}") ✗ ${err.name}: ${err.message}`, 'error')
 		}
 	})
+}
+
+async function refreshPermissionStates(permissionNames) {
+	const states = await Promise.all(
+		permissionNames.map(async (name) => {
+			const status = await navigator.permissions.query({ name })
+			renderPermissionState(name, status.state)
+			return status.state
+		})
+	)
+
+	const hint = document.getElementById('reset-hint')
+	const anyGrantedOrDenied = states.some((s) => s !== 'prompt')
+	hint.hidden = !anyGrantedOrDenied
+
+	log(`permissions refreshed — ${permissionNames.map((n, i) => `${n}: ${states[i]}`).join(', ')}`)
 }
 
 function renderPermissionState(name, state) {
