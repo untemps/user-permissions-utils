@@ -70,6 +70,7 @@
 		]
 	},
 	"scripts": {
+		"dev": "vite demo --config demo/vite.config.js",
 		"test": "vitest",
 		"test:ci": "vitest run --coverage",
 		"build": "vite build && cp src/index.d.ts dist/index.d.ts",
