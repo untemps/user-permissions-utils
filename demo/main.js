@@ -125,5 +125,6 @@ function log(message, type = '') {
 	const entry = document.createElement('div')
 	entry.className = `log-entry${type ? ` ${type}` : ''}`
 	entry.innerHTML = `<span class="time">${time}</span><span class="msg">${message}</span>`
-	logEl.prepend(entry)
+	logEl.append(entry)
+	logEl.scrollTop = logEl.scrollHeight
 }
