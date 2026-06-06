@@ -1,11 +1,16 @@
-import { isNavigatorPermissionsSupported, isNavigatorMediaDevicesSupported, getUserMediaStream } from '../src/index'
+import {
+	isNavigatorPermissionsSupported,
+	isNavigatorMediaDevicesSupported,
+	getUserMediaStream,
+	checkPermission,
+} from '../src/index'
 
 let activeController: AbortController | null = null
 let activeStream: MediaStream | null = null
 
 const WATCHED_PERMISSIONS: PermissionName[] = ['microphone', 'camera']
 const STATE_DOT_CLASS: Record<string, string> = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
-const STATE_LOG_TYPE: Record<string, string> = { granted: 'success', denied: 'error', prompt: '' }
+const STATE_LOG_TYPE: Record<string, string> = { granted: 'success', denied: 'warning', prompt: '' }
 const logEl = document.getElementById('log')!
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -37,8 +42,13 @@ function setSupport(key: string, ok: boolean): void {
 function initPermissionStates(permissionNames: PermissionName[]): void {
 	permissionNames.forEach(async (name) => {
 		try {
+			// Read the current state upfront through the library guard — no prompt, no waiting
+			const state = await checkPermission(name)
+			renderPermissionState(name, state)
+			log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
+
+			// Subscribe to live changes (a capability checkPermission intentionally does not cover)
 			const status = await navigator.permissions.query({ name })
-			renderPermissionState(name, status.state)
 			status.addEventListener('change', () => {
 				renderPermissionState(name, status.state)
 				log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
@@ -46,7 +56,7 @@ function initPermissionStates(permissionNames: PermissionName[]): void {
 		} catch (err) {
 			const error = err as DOMException
 			renderPermissionState(name, 'error')
-			log(`getPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
+			log(`checkPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
 		}
 	})
 }
