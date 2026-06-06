@@ -64,6 +64,10 @@
 				{
 					"releaseRules": [
 						{
+							"breaking": true,
+							"release": "major"
+						},
+						{
 							"type": "chore",
 							"release": "patch"
 						}
