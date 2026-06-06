@@ -12,6 +12,16 @@ Collection of utility functions to manage user permissions.
 yarn add @untemps/user-permissions-utils
 ```
 
+## TypeScript
+
+This package is written in TypeScript and ships its own type declarations — no extra `@types/...` package is required. The option types are exported for convenience:
+
+```typescript
+import { getPermission, getUserMediaStream, type GetPermissionOptions, type GetUserMediaStreamOptions } from '@untemps/user-permissions-utils'
+```
+
+`permissionName` is typed as the DOM `PermissionName` (e.g. `'microphone'`, `'camera'`) and `mediaStreamConstraints` as the DOM `MediaStreamConstraints`.
+
 ## Utils
 
 `getPermission`:

@@ -1,15 +1,22 @@
 import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
 import isNavigatorMediaDevicesSupported from './isNavigatorMediaDevicesSupported'
 
+export interface GetUserMediaStreamOptions {
+	signal?: AbortSignal
+}
+
 /**
  * Returns a promise resolved when the permission is granted by the user and the stream is retrieved
  * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param mediaStreamConstraints    Constraints object. @see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints
- * @param {Object} [options]
- * @param {AbortSignal} [options.signal]  Optional AbortSignal to cancel the operation
- * @returns {Promise}
+ * @param options                   Optional settings
+ * @param options.signal            Optional AbortSignal to cancel the operation
  */
-export default async (permissionName, mediaStreamConstraints, { signal } = {}) => {
+const getUserMediaStream = async (
+	permissionName: PermissionName,
+	mediaStreamConstraints: MediaStreamConstraints,
+	{ signal }: GetUserMediaStreamOptions = {}
+): Promise<MediaStream> => {
 	if (!isNavigatorPermissionsSupported() || !isNavigatorMediaDevicesSupported()) {
 		throw new DOMException(
 			'Navigator API: permissions or Navigator API: mediaDevices not supported',
@@ -30,8 +37,8 @@ export default async (permissionName, mediaStreamConstraints, { signal } = {}) =
 	const mediaPromise = navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
 	if (!signal) return mediaPromise
 
-	let onAbort
-	const abortPromise = new Promise((_, reject) => {
+	let onAbort!: () => void
+	const abortPromise = new Promise<never>((_, reject) => {
 		onAbort = () => reject(signal.reason)
 		signal.addEventListener('abort', onAbort, { once: true })
 	})
@@ -40,3 +47,5 @@ export default async (permissionName, mediaStreamConstraints, { signal } = {}) =
 		signal.removeEventListener('abort', onAbort)
 	})
 }
+
+export default getUserMediaStream
