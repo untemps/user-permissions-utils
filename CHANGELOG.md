@@ -1,3 +1,10 @@
+# [2.0.0-beta.3](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-06-06)
+
+
+### Features
+
+* Add checkPermission utility to query current permission state ([#134](https://github.com/untemps/user-permissions-utils/issues/134)) ([c8be998](https://github.com/untemps/user-permissions-utils/commit/c8be998722a072bd1cce2fea4efe8435d9a414e8))
+
 # [2.0.0-beta.2](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.1...v2.0.0-beta.2) (2026-06-06)
 
 # [2.0.0-beta.1](https://github.com/untemps/user-permissions-utils/compare/v1.3.4...v2.0.0-beta.1) (2026-06-06)
