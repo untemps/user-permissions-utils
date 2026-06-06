@@ -2,3 +2,5 @@ export { default as isNavigatorPermissionsSupported } from './isNavigatorPermiss
 export { default as isNavigatorMediaDevicesSupported } from './isNavigatorMediaDevicesSupported'
 export { default as getPermission } from './getPermission'
 export { default as getUserMediaStream } from './getUserMediaStream'
+export type { GetPermissionOptions } from './getPermission'
+export type { GetUserMediaStreamOptions } from './getUserMediaStream'

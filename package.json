@@ -76,9 +76,10 @@
 		"dev": "vite demo --config demo/vite.config.js",
 		"test": "vitest",
 		"test:ci": "vitest run --coverage",
-		"build": "vite build && cp src/index.d.ts dist/index.d.ts",
+		"typecheck": "tsc --noEmit",
+		"build": "vite build",
 		"lint": "eslint src/",
-		"prettier": "prettier \"./**/*.js\" --ignore-path ./.prettierignore --write",
+		"prettier": "prettier \"./**/*.{js,ts}\" --ignore-path ./.prettierignore --write",
 		"prepare": "husky"
 	}
 }
