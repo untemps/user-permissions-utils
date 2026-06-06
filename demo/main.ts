@@ -1,27 +1,27 @@
-import { isNavigatorPermissionsSupported, isNavigatorMediaDevicesSupported, getUserMediaStream } from '../src/index.js'
+import { isNavigatorPermissionsSupported, isNavigatorMediaDevicesSupported, getUserMediaStream } from '../src/index'
 
-let activeController = null
-let activeStream = null
+let activeController: AbortController | null = null
+let activeStream: MediaStream | null = null
 
-const WATCHED_PERMISSIONS = ['microphone', 'camera']
-const STATE_DOT_CLASS = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
-const STATE_LOG_TYPE = { granted: 'success', denied: 'error', prompt: '' }
-const logEl = document.getElementById('log')
+const WATCHED_PERMISSIONS: PermissionName[] = ['microphone', 'camera']
+const STATE_DOT_CLASS: Record<string, string> = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
+const STATE_LOG_TYPE: Record<string, string> = { granted: 'success', denied: 'error', prompt: '' }
+const logEl = document.getElementById('log')!
 
 document.addEventListener('DOMContentLoaded', () => {
 	initSupportStatus()
 	initPermissionStates(WATCHED_PERMISSIONS)
 
-	document.querySelectorAll('[data-action="getUserMediaStream"]').forEach((btn) => {
+	document.querySelectorAll<HTMLElement>('[data-action="getUserMediaStream"]').forEach((btn) => {
 		btn.addEventListener('click', () =>
-			handleGetUserMediaStream(btn.dataset.permission, JSON.parse(btn.dataset.constraints))
+			handleGetUserMediaStream(btn.dataset.permission as PermissionName, JSON.parse(btn.dataset.constraints!))
 		)
 	})
 
-	document.getElementById('abort-btn').addEventListener('click', handleAbort)
+	document.getElementById('abort-btn')!.addEventListener('click', handleAbort)
 })
 
-function initSupportStatus() {
+function initSupportStatus(): void {
 	const permissionsOk = isNavigatorPermissionsSupported()
 	const mediaDevicesOk = isNavigatorMediaDevicesSupported()
 
@@ -29,12 +29,12 @@ function initSupportStatus() {
 	setSupport('mediadevices', mediaDevicesOk)
 }
 
-function setSupport(key, ok) {
-	document.getElementById(`dot-${key}`).classList.add(ok ? 'supported' : 'unsupported')
-	document.getElementById(`${key}-support`).textContent = ok ? 'supported' : 'not supported'
+function setSupport(key: string, ok: boolean): void {
+	document.getElementById(`dot-${key}`)!.classList.add(ok ? 'supported' : 'unsupported')
+	document.getElementById(`${key}-support`)!.textContent = ok ? 'supported' : 'not supported'
 }
 
-function initPermissionStates(permissionNames) {
+function initPermissionStates(permissionNames: PermissionName[]): void {
 	permissionNames.forEach(async (name) => {
 		try {
 			const status = await navigator.permissions.query({ name })
@@ -44,20 +44,24 @@ function initPermissionStates(permissionNames) {
 				log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
 			})
 		} catch (err) {
+			const error = err as DOMException
 			renderPermissionState(name, 'error')
-			log(`getPermission("${name}") ✗ ${err.name}: ${err.message}`, 'error')
+			log(`getPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
 		}
 	})
 }
 
-function renderPermissionState(name, state) {
-	const dot = document.getElementById(`dot-permission-${name}`)
-	const label = document.getElementById(`permission-${name}`)
+function renderPermissionState(name: string, state: PermissionState | 'error'): void {
+	const dot = document.getElementById(`dot-permission-${name}`)!
+	const label = document.getElementById(`permission-${name}`)!
 	dot.className = `dot ${STATE_DOT_CLASS[state]}`
 	label.textContent = state
 }
 
-async function handleGetUserMediaStream(permissionName, constraints) {
+async function handleGetUserMediaStream(
+	permissionName: PermissionName,
+	constraints: MediaStreamConstraints
+): Promise<void> {
 	stopActiveStream()
 	activeController = new AbortController()
 
@@ -74,19 +78,20 @@ async function handleGetUserMediaStream(permissionName, constraints) {
 		setResult('stream-result', `→ ${label}`, 'success')
 		log(`getUserMediaStream("${permissionName}") → ${label}`, 'success')
 	} catch (err) {
-		if (err.name === 'AbortError') {
+		const error = err as DOMException
+		if (error.name === 'AbortError') {
 			setResult('stream-result', '→ aborted', 'warning')
 			log(`getUserMediaStream("${permissionName}") — aborted`, 'warning')
 		} else {
-			setResult('stream-result', `→ ${err.name}: ${err.message}`, 'error')
-			log(`getUserMediaStream("${permissionName}") ✗ ${err.name}: ${err.message}`, 'error')
+			setResult('stream-result', `→ ${error.name}: ${error.message}`, 'error')
+			log(`getUserMediaStream("${permissionName}") ✗ ${error.name}: ${error.message}`, 'error')
 		}
 	} finally {
 		activeController = null
 	}
 }
 
-function handleAbort() {
+function handleAbort(): void {
 	if (activeController) {
 		activeController.abort()
 	} else {
@@ -96,20 +101,20 @@ function handleAbort() {
 	}
 }
 
-function stopActiveStream() {
+function stopActiveStream(): void {
 	if (activeStream) {
 		activeStream.getTracks().forEach((t) => t.stop())
 		activeStream = null
 	}
 }
 
-function setResult(id, text, type) {
-	const el = document.getElementById(id)
+function setResult(id: string, text: string, type: string): void {
+	const el = document.getElementById(id)!
 	el.textContent = text
 	el.className = `result result--${type}`
 }
 
-function log(message, type = '') {
+function log(message: string, type = ''): void {
 	const empty = logEl.querySelector('.empty-log')
 	if (empty) empty.remove()
 
