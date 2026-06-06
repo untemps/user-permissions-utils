@@ -1,3 +1,20 @@
+# [2.0.0-beta.1](https://github.com/untemps/user-permissions-utils/compare/v1.3.4...v2.0.0-beta.1) (2026-06-06)
+
+
+### Bug Fixes
+
+* **release:** Always bump major on breaking changes ([123798a](https://github.com/untemps/user-permissions-utils/commit/123798a518338ebdd9599677a20f6fdea1e53364))
+
+
+### chore
+
+* Migrate codebase to TypeScript ([#132](https://github.com/untemps/user-permissions-utils/issues/132)) ([dd21810](https://github.com/untemps/user-permissions-utils/commit/dd21810ed90308cea8ace939e10e018ae79d3db2))
+
+
+### BREAKING CHANGES
+
+* The package is now written in TypeScript and ships generated type declarations. Types may be stricter (narrower) for some consumers, though the public signatures are unchanged.
+
 ## [1.3.4](https://github.com/untemps/user-permissions-utils/compare/v1.3.3...v1.3.4) (2026-05-17)
 
 ## [1.3.3](https://github.com/untemps/user-permissions-utils/compare/v1.3.2...v1.3.3) (2026-05-17)
