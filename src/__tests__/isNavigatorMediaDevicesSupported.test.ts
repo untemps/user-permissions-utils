@@ -4,7 +4,7 @@ import { setupPermissionsMock, setupMediaDevicesMock, teardownPermissionsAndMedi
 describe('isNavigatorMediaDevicesSupported', () => {
 	describe('navigator.permissions is not implemented', () => {
 		beforeAll(() => {
-			global.navigator.permissions = undefined
+			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
 		})
 
 		it('returns false as permissions is not supported', async () => {
@@ -14,7 +14,7 @@ describe('isNavigatorMediaDevicesSupported', () => {
 
 	describe('navigator.mediaDevices is not implemented', () => {
 		beforeAll(() => {
-			global.navigator.mediaDevices = undefined
+			;(globalThis.navigator as { mediaDevices?: MediaDevices }).mediaDevices = undefined
 		})
 
 		it('returns false as permissions is not supported', async () => {

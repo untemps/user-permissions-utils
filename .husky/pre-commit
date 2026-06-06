@@ -1,2 +1,2 @@
 #!/bin/sh
-yarn test:ci && yarn lint && yarn prettier
+yarn typecheck && yarn test:ci && yarn lint && yarn prettier

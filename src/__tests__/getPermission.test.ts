@@ -1,14 +1,20 @@
 import getPermission from '../getPermission'
-import { flushMicrotasks, setupPermissionsMock, teardownPermissionsMock } from './testUtils'
+import {
+	flushMicrotasks,
+	setupPermissionsMock,
+	teardownPermissionsMock,
+	type MockPermissionStatus,
+	type StatusChangeListener,
+} from './testUtils'
 
 describe('getPermission', () => {
 	describe('navigator.permissions is not implemented', () => {
 		beforeAll(() => {
-			global.navigator.permissions = undefined
+			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
 		})
 
 		it('rejects promise', async () => {
-			await expect(getPermission()).rejects.toMatchObject({
+			await expect(getPermission('microphone')).rejects.toMatchObject({
 				message: 'Navigator API: permissions not supported',
 				name: 'NOT_SUPPORTED_ERR',
 			})
@@ -23,50 +29,50 @@ describe('getPermission', () => {
 		afterAll(teardownPermissionsMock)
 
 		it('rejects promise since user has previously denied permissions', async () => {
-			const status = new PermissionStatus()
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'denied'
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission()).rejects.toMatchObject({
+			await expect(getPermission('microphone')).rejects.toMatchObject({
 				message: 'Permission denied',
 				name: 'NOT_ALLOWED_ERR',
 			})
 		})
 
 		it('resolves promise since user has previously granted permission', async () => {
-			const status = new PermissionStatus()
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'granted'
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission()).resolves.toBe('granted')
+			await expect(getPermission('microphone')).resolves.toBe('granted')
 		})
 
 		it('rejects promise since user has been prompted and has denied permissions', async () => {
-			const status = new PermissionStatus()
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'prompt'
-			status.addEventListener = vi.fn((e, cb) => {
-				cb({ target: { state: 'denied' } })
+			status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
+				listener({ target: { state: 'denied' } })
 			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission()).rejects.toMatchObject({
+			await expect(getPermission('microphone')).rejects.toMatchObject({
 				message: 'Permission denied',
 				name: 'NOT_ALLOWED_ERR',
 			})
 		})
 
 		it('resolves promise since user has been prompted and has granted permissions', async () => {
-			const status = new PermissionStatus()
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'prompt'
-			status.addEventListener = vi.fn((e, cb) => {
-				cb({ target: { state: 'granted' } })
+			status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
+				listener({ target: { state: 'granted' } })
 			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission()).resolves.toBe('granted')
+			await expect(getPermission('microphone')).resolves.toBe('granted')
 		})
 
 		it('throws error', async () => {
 			mockPermissionsQuery.mockImplementationOnce(() => {
 				throw new Error('ERR')
 			})
-			await expect(getPermission()).rejects.toEqual(new Error('ERR'))
+			await expect(getPermission('microphone')).rejects.toEqual(new Error('ERR'))
 		})
 
 		describe('AbortSignal', () => {
@@ -88,7 +94,7 @@ describe('getPermission', () => {
 			it('rejects with custom reason when aborted with reason during query resolution', async () => {
 				const controller = new AbortController()
 				const reason = new DOMException('Custom reason', 'AbortError')
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				status.addEventListener = vi.fn()
 				status.removeEventListener = vi.fn()
@@ -102,7 +108,7 @@ describe('getPermission', () => {
 			it('rejects with custom reason when aborted with reason while waiting in prompt state', async () => {
 				const controller = new AbortController()
 				const reason = new DOMException('Custom reason', 'AbortError')
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				status.addEventListener = vi.fn()
 				status.removeEventListener = vi.fn()
@@ -118,10 +124,10 @@ describe('getPermission', () => {
 			it('resolves and cleans up abort listener when permission granted via onChange', async () => {
 				const controller = new AbortController()
 				const removeAbortSpy = vi.spyOn(controller.signal, 'removeEventListener')
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn((e, cb) => {
-					cb({ target: { state: 'granted' } })
+				status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
+					listener({ target: { state: 'granted' } })
 				})
 				status.removeEventListener = vi.fn()
 				mockPermissionsQuery.mockResolvedValueOnce(status)
@@ -132,7 +138,7 @@ describe('getPermission', () => {
 
 			it('rejects when signal is aborted while waiting in prompt state', async () => {
 				const controller = new AbortController()
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				status.addEventListener = vi.fn()
 				status.removeEventListener = vi.fn()
@@ -147,7 +153,7 @@ describe('getPermission', () => {
 
 			it('rejects when signal is aborted during query resolution (race condition)', async () => {
 				const controller = new AbortController()
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				status.addEventListener = vi.fn()
 				status.removeEventListener = vi.fn()
@@ -164,7 +170,7 @@ describe('getPermission', () => {
 
 			it('cleans up onChange listener when aborted', async () => {
 				const controller = new AbortController()
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				const mockRemoveEventListener = vi.fn()
 				status.addEventListener = vi.fn()

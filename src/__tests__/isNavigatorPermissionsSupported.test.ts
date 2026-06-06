@@ -4,7 +4,7 @@ import { setupPermissionsMock, teardownPermissionsMock } from './testUtils'
 describe('isNavigatorPermissionsSupported', () => {
 	describe('navigator.permissions is not implemented', () => {
 		beforeAll(() => {
-			global.navigator.permissions = undefined
+			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
 		})
 
 		it('returns false as permissions is not supported', async () => {

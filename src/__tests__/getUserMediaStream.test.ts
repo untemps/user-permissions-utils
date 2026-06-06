@@ -5,16 +5,19 @@ import {
 	teardownPermissionsMock,
 	setupMediaDevicesMock,
 	teardownMediaDevicesMock,
+	type MockPermissionStatus,
 } from './testUtils'
+
+const FAKE_STREAM = {} as MediaStream
 
 describe('getUserMediaStream', () => {
 	describe('navigator.permissions is not implemented', () => {
 		beforeAll(() => {
-			global.navigator.permissions = undefined
+			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
 		})
 
 		it('rejects promise', async () => {
-			await expect(getUserMediaStream()).rejects.toMatchObject({
+			await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 				message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
 				name: 'NOT_SUPPORTED_ERR',
 			})
@@ -30,11 +33,11 @@ describe('getUserMediaStream', () => {
 
 		describe('navigator.mediaDevices is not implemented', () => {
 			beforeAll(() => {
-				global.navigator.mediaDevices = undefined
+				;(globalThis.navigator as { mediaDevices?: MediaDevices }).mediaDevices = undefined
 			})
 
 			it('rejects promise', async () => {
-				await expect(getUserMediaStream()).rejects.toMatchObject({
+				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 					message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
 					name: 'NOT_SUPPORTED_ERR',
 				})
@@ -49,60 +52,60 @@ describe('getUserMediaStream', () => {
 			afterAll(teardownMediaDevicesMock)
 
 			it('rejects promise since user has previously denied permissions', async () => {
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'denied'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
-				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				await expect(getUserMediaStream()).rejects.toMatchObject({
+				mockMediaDevicesGetUserMedia.mockResolvedValueOnce(FAKE_STREAM)
+				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 					message: 'Permission denied',
 					name: 'NOT_ALLOWED_ERR',
 				})
 			})
 
 			it('resolves promise with stream since user has previously granted permission', async () => {
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'granted'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
-				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				await expect(getUserMediaStream()).resolves.toBe('foo')
+				mockMediaDevicesGetUserMedia.mockResolvedValueOnce(FAKE_STREAM)
+				await expect(getUserMediaStream('microphone', { audio: true })).resolves.toBe(FAKE_STREAM)
 			})
 
 			it('rejects promise since user has been prompted and has denied permissions', async () => {
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockRejectedValueOnce(
 					new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 				)
-				await expect(getUserMediaStream()).rejects.toMatchObject({
+				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 					message: 'Permission denied',
 					name: 'NOT_ALLOWED_ERR',
 				})
 			})
 
 			it('resolves promise with stream since user has been prompted and has granted permissions', async () => {
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
-				mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
-				await expect(getUserMediaStream()).resolves.toBe('foo')
+				mockMediaDevicesGetUserMedia.mockResolvedValueOnce(FAKE_STREAM)
+				await expect(getUserMediaStream('microphone', { audio: true })).resolves.toBe(FAKE_STREAM)
 			})
 
 			it('throws since error is raised from permissions', async () => {
 				mockPermissionsQuery.mockImplementationOnce(() => {
 					throw new Error('ERR')
 				})
-				await expect(getUserMediaStream()).rejects.toEqual(new Error('ERR'))
+				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toEqual(new Error('ERR'))
 			})
 
 			it('throws since error is raised from mediaDevices', async () => {
-				const status = new PermissionStatus()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'granted'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 				mockMediaDevicesGetUserMedia.mockImplementationOnce(() => {
 					throw new Error('ERR')
 				})
-				await expect(getUserMediaStream()).rejects.toEqual(new Error('ERR'))
+				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toEqual(new Error('ERR'))
 			})
 
 			describe('AbortSignal', () => {
@@ -118,7 +121,7 @@ describe('getUserMediaStream', () => {
 
 				it("rejects when signal is aborted after permission is 'prompt' but before getUserMedia", async () => {
 					const controller = new AbortController()
-					const status = new PermissionStatus()
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'prompt'
 					mockPermissionsQuery.mockImplementationOnce(() => {
 						controller.abort()
@@ -133,7 +136,7 @@ describe('getUserMediaStream', () => {
 
 				it('rejects when signal is aborted after permission granted but before getUserMedia', async () => {
 					const controller = new AbortController()
-					const status = new PermissionStatus()
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'granted'
 					mockPermissionsQuery.mockImplementationOnce(() => {
 						controller.abort()
@@ -150,7 +153,7 @@ describe('getUserMediaStream', () => {
 
 				it('rejects when signal is aborted during getUserMedia', async () => {
 					const controller = new AbortController()
-					const status = new PermissionStatus()
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'granted'
 					mockPermissionsQuery.mockResolvedValueOnce(status)
 					mockMediaDevicesGetUserMedia.mockImplementationOnce(() => new Promise(() => {}))
@@ -165,14 +168,14 @@ describe('getUserMediaStream', () => {
 
 				it('resolves with stream when signal is provided but not aborted', async () => {
 					const controller = new AbortController()
-					const status = new PermissionStatus()
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'granted'
 					mockPermissionsQuery.mockResolvedValueOnce(status)
-					mockMediaDevicesGetUserMedia.mockResolvedValueOnce('foo')
+					mockMediaDevicesGetUserMedia.mockResolvedValueOnce(FAKE_STREAM)
 
 					await expect(
 						getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
-					).resolves.toBe('foo')
+					).resolves.toBe(FAKE_STREAM)
 				})
 			})
 		})

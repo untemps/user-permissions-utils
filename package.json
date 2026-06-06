@@ -44,12 +44,19 @@
 		"jsdom": "^29.1.1",
 		"prettier": "^3.8.3",
 		"semantic-release": "^25.0.3",
+		"typescript": "^6.0.3",
+		"typescript-eslint": "^8.60.1",
 		"vite": "^8.0.12",
+		"vite-plugin-dts": "^5.0.2",
 		"vitest": "^4.1.6"
 	},
 	"release": {
 		"branches": [
-			"main"
+			"main",
+			{
+				"name": "beta",
+				"prerelease": true
+			}
 		],
 		"plugins": [
 			[
@@ -73,9 +80,10 @@
 		"dev": "vite demo --config demo/vite.config.js",
 		"test": "vitest",
 		"test:ci": "vitest run --coverage",
-		"build": "vite build && cp src/index.d.ts dist/index.d.ts",
+		"typecheck": "tsc --noEmit",
+		"build": "vite build",
 		"lint": "eslint src/",
-		"prettier": "prettier \"./**/*.js\" --ignore-path ./.prettierignore --write",
+		"prettier": "prettier \"./**/*.{js,ts}\" --ignore-path ./.prettierignore --write",
 		"prepare": "husky"
 	}
 }
