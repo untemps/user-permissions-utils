@@ -62,6 +62,30 @@ const init = async () => {
 controller.abort()
 ```
 
+`checkPermission`:
+
+Returns a promise resolved with the current permission state (`'granted'`, `'denied'` or `'prompt'`) immediately. Unlike `getPermission`, it never waits for user interaction and never rejects on `'denied'`. It rejects when the Permissions API is unsupported, and otherwise propagates any error from `navigator.permissions.query()` (e.g. an unrecognized permission name). Useful to read the current state upfront (show a permission banner, disable a button, branch UI logic) without triggering a prompt.
+
+```javascript
+import { checkPermission } from '@untemps/user-permissions-utils'
+
+const init = async () => {
+    try {
+        const state = await checkPermission('microphone') // 'granted' | 'denied' | 'prompt'
+        if (state === 'granted') {
+            // permission already available — start straight away
+            ...
+        } else if (state === 'prompt') {
+            // show a button that calls getPermission/getUserMediaStream on click
+            ...
+        }
+    } catch (error) {
+        // Thrown when the Permissions API is unsupported or the query fails
+        console.error(error)
+    }
+}
+```
+
 `getUserMediaStream`:
 
 Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation.
