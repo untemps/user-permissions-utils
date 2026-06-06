@@ -22,7 +22,7 @@ Le pre-commit hook exécute automatiquement `typecheck` + `test:ci` + `lint` + `
 
 ## Architecture
 
-Bibliothèque utilitaire légère (~4 fonctions) écrite en **TypeScript**, qui encapsule les APIs navigateur `navigator.permissions` et `navigator.mediaDevices`. Les types des APIs navigateur (`PermissionName`, `PermissionState`, `MediaStreamConstraints`, `AbortSignal`) proviennent de la lib `DOM` de TypeScript.
+Bibliothèque utilitaire légère (~5 fonctions) écrite en **TypeScript**, qui encapsule les APIs navigateur `navigator.permissions` et `navigator.mediaDevices`. Les types des APIs navigateur (`PermissionName`, `PermissionState`, `MediaStreamConstraints`, `AbortSignal`) proviennent de la lib `DOM` de TypeScript.
 
 **Flux d'appel :**
 ```
@@ -32,10 +32,15 @@ getUserMediaStream
   └── getPermission
         └── isNavigatorPermissionsSupported (guard)
         └── navigator.permissions.query()
+
+checkPermission
+  └── isNavigatorPermissionsSupported  (guard)
+  └── navigator.permissions.query()
 ```
 
 - `isNavigatorPermissionsSupported` / `isNavigatorMediaDevicesSupported` : guards booléens sur l'existence des APIs navigateur.
 - `getPermission(permissionName)` : retourne une Promise qui se résout sur l'état de permission (`'granted'` / `'prompt'`) ou rejette avec `DOMException` si refusée ou non supportée. Écoute l'événement `change` pour détecter les changements d'état en temps réel.
+- `checkPermission(permissionName)` : retourne une Promise résolue immédiatement avec l'état courant de la permission (`'granted'` / `'denied'` / `'prompt'`), sans attendre d'interaction utilisateur ni rejeter sur `'denied'`. Passe par le même guard `isNavigatorPermissionsSupported` que `getPermission`. Utile pour lire l'état en amont (bannière, bouton désactivé, branchement UI).
 - `getUserMediaStream(permissionName, mediaStreamConstraints)` : combine `getPermission` + `navigator.mediaDevices.getUserMedia` via `Promise.all`.
 
 ## Build
