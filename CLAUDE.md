@@ -7,8 +7,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 yarn test          # tests en mode watch (Vitest)
 yarn test:ci       # tests one-shot avec coverage (utilisé par le pre-commit hook et CI)
-yarn build         # compile CJS + ES + UMD vers dist/ via Vite
-yarn prettier      # formate tous les .js (hors .prettierignore)
+yarn typecheck     # vérification de types TypeScript (tsc --noEmit)
+yarn build         # compile CJS + ES + UMD + déclarations .d.ts vers dist/ via Vite
+yarn lint          # ESLint (typescript-eslint) sur src/
+yarn prettier      # formate tous les .js / .ts (hors .prettierignore)
 ```
 
 Lancer un test unique :
@@ -16,11 +18,11 @@ Lancer un test unique :
 yarn test:ci --reporter=verbose getPermission
 ```
 
-Le pre-commit hook exécute automatiquement `test:ci` + `prettier` via Husky 9 (`.husky/pre-commit`).
+Le pre-commit hook exécute automatiquement `typecheck` + `test:ci` + `lint` + `prettier` via Husky 9 (`.husky/pre-commit`).
 
 ## Architecture
 
-Bibliothèque utilitaire légère (~4 fonctions) qui encapsule les APIs navigateur `navigator.permissions` et `navigator.mediaDevices`.
+Bibliothèque utilitaire légère (~4 fonctions) écrite en **TypeScript**, qui encapsule les APIs navigateur `navigator.permissions` et `navigator.mediaDevices`. Les types des APIs navigateur (`PermissionName`, `PermissionState`, `MediaStreamConstraints`, `AbortSignal`) proviennent de la lib `DOM` de TypeScript.
 
 **Flux d'appel :**
 ```
@@ -38,14 +40,14 @@ getUserMediaStream
 
 ## Build
 
-Vite (lib mode) compile `src/index.js` en 3 formats via `vite.config.js` :
+Vite (lib mode) compile `src/index.ts` en 3 formats via `vite.config.js` :
 - `cjs` → `dist/index.js`
 - `es` → `dist/index.es.js`
 - `umd` → `dist/index.umd.js`
 
-Vite nettoie `dist/` automatiquement avant chaque build. Sourcemaps activés.
+Les déclarations de types (`dist/index.d.ts` et fichiers associés) sont générées automatiquement par `vite-plugin-dts` à partir des sources TypeScript — il n'y a plus de `src/index.d.ts` maintenu à la main. Vite nettoie `dist/` automatiquement avant chaque build. Sourcemaps désactivés (`sourcemap: false`).
 
 ## Release
 
-Semantic-release gère versioning + changelog + publish npm automatiquement depuis la CI sur push `main`. Les commits de type `chore` déclenchent un patch release (règle custom dans `package.json`).
+Semantic-release gère versioning + changelog + publish npm automatiquement depuis la CI sur push `main` (canal stable) et `beta` (canal pré-release : ex. `2.0.0-beta.1` publié sous le tag npm `beta`). Les commits de type `chore` déclenchent un patch release (règle custom dans `package.json`).
 
