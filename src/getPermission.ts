@@ -1,13 +1,19 @@
 import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
 
+export interface GetPermissionOptions {
+	signal?: AbortSignal
+}
+
 /**
  * Returns a promise resolved when the permission is granted by the user
  * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
- * @param {Object} [options]
- * @param {AbortSignal} [options.signal]  Optional AbortSignal to cancel the pending permission wait
- * @returns {Promise}
+ * @param options                   Optional settings
+ * @param options.signal            Optional AbortSignal to cancel the pending permission wait
  */
-export default async (permissionName, { signal } = {}) => {
+const getPermission = async (
+	permissionName: PermissionName,
+	{ signal }: GetPermissionOptions = {}
+): Promise<'granted'> => {
 	if (!isNavigatorPermissionsSupported()) {
 		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
 	}
@@ -17,14 +23,14 @@ export default async (permissionName, { signal } = {}) => {
 	const permissionStatus = await navigator.permissions.query({ name: permissionName })
 
 	if (permissionStatus.state === 'prompt') {
-		return new Promise((resolve, reject) => {
+		return new Promise<'granted'>((resolve, reject) => {
 			signal?.throwIfAborted()
 
-			const onChange = (event) => {
+			const onChange = (event: Event) => {
 				permissionStatus.removeEventListener('change', onChange)
 				signal?.removeEventListener('abort', onAbort)
 				try {
-					resolve(resolveOrRejectBasedOnState(event.target.state))
+					resolve(resolveOrRejectBasedOnState((event.target as PermissionStatus).state))
 				} catch (error) {
 					reject(error)
 				}
@@ -32,7 +38,7 @@ export default async (permissionName, { signal } = {}) => {
 
 			const onAbort = () => {
 				permissionStatus.removeEventListener('change', onChange)
-				reject(signal.reason)
+				reject(signal!.reason)
 			}
 
 			permissionStatus.addEventListener('change', onChange)
@@ -43,9 +49,11 @@ export default async (permissionName, { signal } = {}) => {
 	return resolveOrRejectBasedOnState(permissionStatus.state)
 }
 
-const resolveOrRejectBasedOnState = (state) => {
+const resolveOrRejectBasedOnState = (state: PermissionState): 'granted' => {
 	if (state === 'denied') {
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
-	return state
+	return state as 'granted'
 }
+
+export default getPermission
