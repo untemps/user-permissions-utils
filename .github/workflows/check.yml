@@ -1,0 +1,40 @@
+name: 'Check'
+on:
+    pull_request:
+        branches:
+            - main
+            - beta
+    workflow_call:
+permissions:
+    contents: read
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: '24'
+                  cache: 'yarn'
+            - run: yarn install --frozen-lockfile
+            - run: yarn typecheck
+            - run: yarn test:ci
+            - run: yarn lint
+            - run: yarn build
+            # On the workflow_call path the github context is the caller's, so
+            # event_name is 'push' when invoked by publish.yml — that is what lets
+            # the publish job reuse this dist instead of rebuilding.
+            - uses: actions/upload-artifact@v4
+              if: success() && github.event_name == 'push'
+              with:
+                  name: dist
+                  path: dist
+                  retention-days: 1
+            - uses: codecov/codecov-action@v6
+              if: ${{ !cancelled() }}
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: coverage/lcov.info
