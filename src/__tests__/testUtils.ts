@@ -2,13 +2,13 @@ import type { Mock } from 'vitest'
 
 export const flushMicrotasks = (): Promise<void> => Promise.resolve()
 
-export interface MockPermissionStatus {
+// A real `EventTarget` (so `addEventListener` / `removeEventListener` / `dispatchEvent`
+// behave like the browser) carrying a mutable `state`. Prompt tests drive the genuine
+// async path by mutating `state` then dispatching a `change` event, rather than firing a
+// listener synchronously from inside a mocked `addEventListener`.
+export interface MockPermissionStatus extends EventTarget {
 	state: PermissionState
-	addEventListener: Mock
-	removeEventListener: Mock
 }
-
-export type StatusChangeListener = (event: { target: { state: PermissionState } }) => void
 
 // Save/restore originals so the suite never leaks mutated globals between blocks.
 // Each `stubProperty` is paired with a matching `restoreProperty` (in an `afterAll`),
@@ -42,9 +42,9 @@ export const setupPermissionsMock = (mockQuery: Mock): void => {
 	stubProperty(
 		globalThis,
 		'PermissionStatus',
-		vi.fn(function () {
-			return { state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }
-		})
+		class extends EventTarget {
+			state: PermissionState = 'granted'
+		}
 	)
 	stubProperty(
 		globalThis,

@@ -6,7 +6,6 @@ import {
 	setupPermissionsMock,
 	teardownPermissionsMock,
 	type MockPermissionStatus,
-	type StatusChangeListener,
 } from './testUtils'
 
 describe('getPermission', () => {
@@ -49,24 +48,29 @@ describe('getPermission', () => {
 		it('rejects promise since user has been prompted and has denied permissions', async () => {
 			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'prompt'
-			status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
-				listener({ target: { state: 'denied' } })
-			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission('microphone', { timeout: 1000 })).rejects.toMatchObject({
+
+			const promise = getPermission('microphone', { timeout: 1000 })
+			const expectation = expect(promise).rejects.toMatchObject({
 				message: 'Permission denied',
 				name: 'NOT_ALLOWED_ERR',
 			})
+			await flushMicrotasks()
+			status.state = 'denied'
+			status.dispatchEvent(new Event('change'))
+			await expectation
 		})
 
 		it('resolves promise since user has been prompted and has granted permissions', async () => {
 			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'prompt'
-			status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
-				listener({ target: { state: 'granted' } })
-			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission('microphone', { timeout: 1000 })).resolves.toBe('granted')
+
+			const promise = getPermission('microphone', { timeout: 1000 })
+			await flushMicrotasks()
+			status.state = 'granted'
+			status.dispatchEvent(new Event('change'))
+			await expect(promise).resolves.toBe('granted')
 		})
 
 		it('throws error', async () => {
@@ -80,15 +84,14 @@ describe('getPermission', () => {
 			it('rejects immediately when state is prompt and neither signal nor timeout is provided', async () => {
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn()
-				status.removeEventListener = vi.fn()
+				const addEventListenerSpy = vi.spyOn(status, 'addEventListener')
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				await expect(getPermission('microphone')).rejects.toMatchObject({
 					name: 'InvalidStateError',
 				})
 				// It must not start watching when it cannot ever settle
-				expect(status.addEventListener).not.toHaveBeenCalled()
+				expect(addEventListenerSpy).not.toHaveBeenCalled()
 			})
 
 			it('rejects with TimeoutError when timeout elapses before the permission changes', async () => {
@@ -96,8 +99,7 @@ describe('getPermission', () => {
 				try {
 					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'prompt'
-					status.addEventListener = vi.fn()
-					status.removeEventListener = vi.fn()
+					const removeEventListenerSpy = vi.spyOn(status, 'removeEventListener')
 					mockPermissionsQuery.mockResolvedValueOnce(status)
 
 					const promise = getPermission('microphone', { timeout: 1000 })
@@ -106,7 +108,7 @@ describe('getPermission', () => {
 					await expectation
 
 					// The change listener must be removed on timeout (no leak)
-					expect(status.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+					expect(removeEventListenerSpy).toHaveBeenCalledWith('change', expect.any(Function))
 				} finally {
 					vi.useRealTimers()
 				}
@@ -117,13 +119,12 @@ describe('getPermission', () => {
 				try {
 					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'prompt'
-					status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
-						listener({ target: { state: 'granted' } })
-					})
-					status.removeEventListener = vi.fn()
 					mockPermissionsQuery.mockResolvedValueOnce(status)
 
 					const promise = getPermission('microphone', { timeout: 1000 })
+					await flushMicrotasks()
+					status.state = 'granted'
+					status.dispatchEvent(new Event('change'))
 					await expect(promise).resolves.toBe('granted')
 
 					// The scheduled timeout must have been cleared — no leaked timer left pending
@@ -136,13 +137,9 @@ describe('getPermission', () => {
 			it('keeps waiting when a change event leaves the state in prompt and only settles on a terminal state', async () => {
 				vi.useFakeTimers()
 				try {
-					let changeListener!: StatusChangeListener
 					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'prompt'
-					status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
-						changeListener = listener
-					})
-					status.removeEventListener = vi.fn()
+					const removeEventListenerSpy = vi.spyOn(status, 'removeEventListener')
 					mockPermissionsQuery.mockResolvedValueOnce(status)
 
 					const promise = getPermission('microphone', { timeout: 1000 })
@@ -151,14 +148,15 @@ describe('getPermission', () => {
 					// A `change` event that leaves the state in `'prompt'` must not settle the
 					// promise (`Promise<'granted'>` must never resolve with `'prompt'`) and must
 					// not tear down the still-bounded watch.
-					changeListener({ target: { state: 'prompt' } })
-					expect(status.removeEventListener).not.toHaveBeenCalled()
+					status.dispatchEvent(new Event('change'))
+					expect(removeEventListenerSpy).not.toHaveBeenCalled()
 					expect(vi.getTimerCount()).toBe(1)
 
 					// A later transition to a terminal state settles it and cleans everything up.
-					changeListener({ target: { state: 'granted' } })
+					status.state = 'granted'
+					status.dispatchEvent(new Event('change'))
 					await expect(promise).resolves.toBe('granted')
-					expect(status.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+					expect(removeEventListenerSpy).toHaveBeenCalledWith('change', expect.any(Function))
 					expect(vi.getTimerCount()).toBe(0)
 				} finally {
 					vi.useRealTimers()
@@ -187,8 +185,6 @@ describe('getPermission', () => {
 				const reason = new DOMException('Custom reason', 'AbortError')
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn()
-				status.removeEventListener = vi.fn()
 				mockPermissionsQuery.mockImplementationOnce(() => {
 					controller.abort(reason)
 					return Promise.resolve(status)
@@ -201,8 +197,6 @@ describe('getPermission', () => {
 				const reason = new DOMException('Custom reason', 'AbortError')
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn()
-				status.removeEventListener = vi.fn()
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				const promise = getPermission('microphone', { signal: controller.signal })
@@ -217,13 +211,16 @@ describe('getPermission', () => {
 				const removeAbortSpy = vi.spyOn(controller.signal, 'removeEventListener')
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
-					listener({ target: { state: 'granted' } })
-				})
-				status.removeEventListener = vi.fn()
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
-				await expect(getPermission('microphone', { signal: controller.signal })).resolves.toBe('granted')
+				const promise = getPermission('microphone', { signal: controller.signal })
+				await flushMicrotasks()
+				status.state = 'granted'
+				status.dispatchEvent(new Event('change'))
+
+				await expect(promise).resolves.toBe('granted')
+				// The abort listener was genuinely registered (the watch was pending) and is removed
+				// on cleanup — only the real async path exercises this ordering.
 				expect(removeAbortSpy).toHaveBeenCalledWith('abort', expect.any(Function))
 			})
 
@@ -231,8 +228,6 @@ describe('getPermission', () => {
 				const controller = new AbortController()
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn()
-				status.removeEventListener = vi.fn()
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				const promise = getPermission('microphone', { signal: controller.signal })
@@ -246,8 +241,6 @@ describe('getPermission', () => {
 				const controller = new AbortController()
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				status.addEventListener = vi.fn()
-				status.removeEventListener = vi.fn()
 				// Abort synchronously inside the mock so signal is aborted when await resolves
 				mockPermissionsQuery.mockImplementationOnce(() => {
 					controller.abort()
@@ -278,9 +271,7 @@ describe('getPermission', () => {
 				const controller = new AbortController()
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
-				const mockRemoveEventListener = vi.fn()
-				status.addEventListener = vi.fn()
-				status.removeEventListener = mockRemoveEventListener
+				const removeEventListenerSpy = vi.spyOn(status, 'removeEventListener')
 				mockPermissionsQuery.mockResolvedValueOnce(status)
 
 				const promise = getPermission('microphone', { signal: controller.signal })
@@ -288,7 +279,7 @@ describe('getPermission', () => {
 				controller.abort()
 
 				await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
-				expect(mockRemoveEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+				expect(removeEventListenerSpy).toHaveBeenCalledWith('change', expect.any(Function))
 			})
 		})
 	})
