@@ -1,11 +1,15 @@
 import isNavigatorPermissionsSupported from '../isNavigatorPermissionsSupported'
-import { setupPermissionsMock, teardownPermissionsMock } from './testUtils'
+import {
+	setNavigatorApiUnsupported,
+	restoreNavigatorApi,
+	setupPermissionsMock,
+	teardownPermissionsMock,
+} from './testUtils'
 
 describe('isNavigatorPermissionsSupported', () => {
 	describe('navigator.permissions is not implemented', () => {
-		beforeAll(() => {
-			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
-		})
+		beforeAll(() => setNavigatorApiUnsupported('permissions'))
+		afterAll(() => restoreNavigatorApi('permissions'))
 
 		it('returns false as permissions is not supported', async () => {
 			expect(isNavigatorPermissionsSupported()).toBeFalsy()
