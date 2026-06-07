@@ -20,5 +20,18 @@ module.exports = tseslint.config(
 				...globals.vitest,
 			},
 		},
+	},
+	{
+		// These config files are CommonJS and run in Node, unlike the rest of
+		// the repo (browser ESM). The vite configs are ESM, so we target the
+		// CommonJS ones by name rather than a blanket `*.config.js` override.
+		files: ['eslint.config.js', 'commitlint.config.js'],
+		languageOptions: {
+			globals: globals.node,
+			sourceType: 'commonjs',
+		},
+		rules: {
+			'@typescript-eslint/no-require-imports': 'off',
+		},
 	}
 )
