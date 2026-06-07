@@ -56,6 +56,14 @@ Vite (lib mode) compile `src/index.ts` en 3 formats via `vite.config.js` :
 
 Les déclarations de types (`dist/index.d.ts` et fichiers associés) sont générées automatiquement par `vite-plugin-dts` à partir des sources TypeScript — il n'y a plus de `src/index.d.ts` maintenu à la main. Vite nettoie `dist/` automatiquement avant chaque build. Sourcemaps désactivés (`sourcemap: false`).
 
+## CI
+
+Trois workflows GitHub Actions dans `.github/workflows/` :
+
+- `check.yml` : workflow **réutilisable** déclenché sur `pull_request` (vers `main` et `beta`) et via `workflow_call`. Installe les dépendances puis enchaîne `typecheck` + `test:ci` + `lint` + `build`, upload la couverture sur Codecov, et publie `dist/` en artifact **uniquement sur push** (pour que `publish.yml` le réutilise). C'est la validation pré-merge des PR.
+- `publish.yml` : sur push `main`/`beta`, appelle d'abord `check.yml` (`secrets: inherit` pour transmettre `CODECOV_TOKEN`), puis le job `publish` (`needs: check`) télécharge l'artifact `dist` au lieu de rebuilder et lance `npx semantic-release`. La publication reste donc protégée par la validation complète.
+- `codeql.yml` : analyse de sécurité CodeQL (JavaScript/TypeScript) sur push, PR et un cron hebdomadaire.
+
 ## Release
 
 Semantic-release gère versioning + changelog + publish npm automatiquement depuis la CI sur push `main` (canal stable) et `beta` (canal pré-release : ex. `2.0.0-beta.1` publié sous le tag npm `beta`). Les commits de type `chore` déclenchent un patch release (règle custom dans `package.json`).
