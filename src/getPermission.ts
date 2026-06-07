@@ -61,9 +61,16 @@ const getPermission = async (
 			}
 
 			const onChange = (event: Event) => {
+				const state = (event.target as PermissionStatus).state
+				// A `change` event only settles the wait on a terminal state. Ignore any event
+				// that leaves us in `'prompt'` so the watcher keeps waiting (still bounded by
+				// `signal`/`timeout`) instead of settling with a non-`'granted'` value.
+				if (state === 'prompt') {
+					return
+				}
 				cleanup()
 				try {
-					resolve(resolveOrRejectBasedOnState((event.target as PermissionStatus).state))
+					resolve(resolveOrRejectBasedOnState(state))
 				} catch (error) {
 					reject(error)
 				}
@@ -89,11 +96,14 @@ const getPermission = async (
 	return resolveOrRejectBasedOnState(permissionStatus.state)
 }
 
-const resolveOrRejectBasedOnState = (state: PermissionState): 'granted' => {
+// Accepts only terminal states: `'prompt'` is excluded at the type level, so every caller must
+// filter it out first. After the `'denied'` throw, TypeScript narrows `state` to `'granted'`, so
+// the return needs no cast — the `Promise<'granted'>` contract is enforced by the compiler.
+const resolveOrRejectBasedOnState = (state: Exclude<PermissionState, 'prompt'>): 'granted' => {
 	if (state === 'denied') {
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
-	return state as 'granted'
+	return state
 }
 
 export default getPermission

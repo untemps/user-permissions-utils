@@ -131,6 +131,38 @@ describe('getPermission', () => {
 					vi.useRealTimers()
 				}
 			})
+
+			it('keeps waiting when a change event leaves the state in prompt and only settles on a terminal state', async () => {
+				vi.useFakeTimers()
+				try {
+					let changeListener!: StatusChangeListener
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
+					status.state = 'prompt'
+					status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
+						changeListener = listener
+					})
+					status.removeEventListener = vi.fn()
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+
+					const promise = getPermission('microphone', { timeout: 1000 })
+					await flushMicrotasks()
+
+					// A `change` event that leaves the state in `'prompt'` must not settle the
+					// promise (`Promise<'granted'>` must never resolve with `'prompt'`) and must
+					// not tear down the still-bounded watch.
+					changeListener({ target: { state: 'prompt' } })
+					expect(status.removeEventListener).not.toHaveBeenCalled()
+					expect(vi.getTimerCount()).toBe(1)
+
+					// A later transition to a terminal state settles it and cleans everything up.
+					changeListener({ target: { state: 'granted' } })
+					await expect(promise).resolves.toBe('granted')
+					expect(status.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+					expect(vi.getTimerCount()).toBe(0)
+				} finally {
+					vi.useRealTimers()
+				}
+			})
 		})
 
 		describe('AbortSignal', () => {
