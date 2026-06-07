@@ -29,9 +29,13 @@ Bibliothèque utilitaire légère (~5 fonctions) écrite en **TypeScript**, qui 
 getUserMediaStream
   └── isNavigatorPermissionsSupported  (guard)
   └── isNavigatorMediaDevicesSupported (guard)
-  └── getPermission
-        └── isNavigatorPermissionsSupported (guard)
-        └── navigator.permissions.query()
+  └── navigator.permissions.query()         (rejette si 'denied')
+  └── navigator.mediaDevices.getUserMedia() (Promise.race avec l'AbortSignal)
+
+getPermission
+  └── isNavigatorPermissionsSupported  (guard)
+  └── navigator.permissions.query()
+  └── (sur 'prompt') attend l'événement 'change', borné par signal/timeout
 
 checkPermission
   └── isNavigatorPermissionsSupported  (guard)
@@ -39,9 +43,9 @@ checkPermission
 ```
 
 - `isNavigatorPermissionsSupported` / `isNavigatorMediaDevicesSupported` : guards booléens sur l'existence des APIs navigateur.
-- `getPermission(permissionName)` : retourne une Promise qui se résout sur l'état de permission (`'granted'` / `'prompt'`) ou rejette avec `DOMException` si refusée ou non supportée. Écoute l'événement `change` pour détecter les changements d'état en temps réel.
+- `getPermission(permissionName, { signal?, timeout? })` : watcher **passif** qui résout sur `'granted'` une fois la permission accordée. `navigator.permissions.query()` n'affiche **jamais** de dialogue : `'granted'` résout immédiatement, `'denied'` rejette (`NOT_ALLOWED_ERR`). Sur `'prompt'`, attend l'événement `change` (déclenché seulement quand autre chose provoque la vraie requête, ex. `getUserMediaStream`) ; comme rien ne fait transitionner l'état tout seul, l'attente doit être **bornée** par `timeout` (rejette `TimeoutError`) et/ou `signal`. Sans aucune des deux sur `'prompt'`, rejette immédiatement (`InvalidStateError`) au lieu de rester pendante à jamais. Le listener `change` est nettoyé sur tous les chemins de résolution.
 - `checkPermission(permissionName)` : retourne une Promise résolue immédiatement avec l'état courant de la permission (`'granted'` / `'denied'` / `'prompt'`), sans attendre d'interaction utilisateur ni rejeter sur `'denied'`. Passe par le même guard `isNavigatorPermissionsSupported` que `getPermission`. Utile pour lire l'état en amont (bannière, bouton désactivé, branchement UI).
-- `getUserMediaStream(permissionName, mediaStreamConstraints)` : combine `getPermission` + `navigator.mediaDevices.getUserMedia` via `Promise.all`.
+- `getUserMediaStream(permissionName, mediaStreamConstraints, { signal? })` : appelle directement `navigator.permissions.query()` (rejette si `'denied'`) puis `navigator.mediaDevices.getUserMedia()` — c'est `getUserMedia` qui déclenche le vrai dialogue. N'appelle **pas** `getPermission` et n'est donc pas concerné par le contrat d'attente bornée ; l'`AbortSignal` est géré via `Promise.race`.
 
 ## Build
 
