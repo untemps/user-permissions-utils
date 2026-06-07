@@ -26,14 +26,19 @@ import { getPermission, getUserMediaStream, type GetPermissionOptions, type GetU
 
 `getPermission`:
 
-Returns a promise resolved when the permission is granted. Accepts an optional `signal` to cancel the pending wait.
+Watches a permission and resolves with `'granted'` once it is granted. It is a **passive** watcher built on `navigator.permissions.query()`, so **it never displays a permission dialog**: an already-`'granted'` state resolves right away, while a `'denied'` state rejects with a `NOT_ALLOWED_ERR` `DOMException`.
+
+When the state is `'prompt'`, `getPermission` waits for the `change` event — which only fires once _something else_ triggers the real request (e.g. `getUserMediaStream`, `geolocation.getCurrentPosition`) and the user responds. Since nothing transitions a `'prompt'` state on its own, **the wait must be bounded**: pass a `timeout` (rejects with a `TimeoutError` once elapsed), a `signal`, or both. If you provide neither while the state is `'prompt'`, the promise rejects immediately with an `InvalidStateError` instead of hanging forever.
+
+To actually surface a permission dialog, use `getUserMediaStream` (which calls `navigator.mediaDevices.getUserMedia()`) or trigger the relevant browser API yourself — `getPermission` only observes the state.
 
 ```javascript
 import { getPermission } from '@untemps/user-permissions-utils'
 
 const init = async () => {
     try {
-    	await getPermission('microphone')
+        // Resolves immediately if already granted, otherwise waits up to 5s
+        await getPermission('microphone', { timeout: 5000 })
         ...
     } catch (error) {
         console.error(error)
@@ -58,7 +63,7 @@ const init = async () => {
     }
 }
 
-// Cancel before the user responds to the permission dialog
+// Cancel while still waiting for the permission to be granted
 controller.abort()
 ```
 
