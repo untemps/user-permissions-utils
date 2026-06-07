@@ -11,7 +11,7 @@
 	"author": "Vincent Le Badezet <v.lebadezet@untemps.net>",
 	"license": "MIT",
 	"engines": {
-		"node": ">=22"
+		"node": ">=20"
 	},
 	"private": false,
 	"publishConfig": {
