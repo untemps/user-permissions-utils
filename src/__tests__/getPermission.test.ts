@@ -52,7 +52,7 @@ describe('getPermission', () => {
 				listener({ target: { state: 'denied' } })
 			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission('microphone')).rejects.toMatchObject({
+			await expect(getPermission('microphone', { timeout: 1000 })).rejects.toMatchObject({
 				message: 'Permission denied',
 				name: 'NOT_ALLOWED_ERR',
 			})
@@ -65,7 +65,7 @@ describe('getPermission', () => {
 				listener({ target: { state: 'granted' } })
 			})
 			mockPermissionsQuery.mockResolvedValueOnce(status)
-			await expect(getPermission('microphone')).resolves.toBe('granted')
+			await expect(getPermission('microphone', { timeout: 1000 })).resolves.toBe('granted')
 		})
 
 		it('throws error', async () => {
@@ -73,6 +73,64 @@ describe('getPermission', () => {
 				throw new Error('ERR')
 			})
 			await expect(getPermission('microphone')).rejects.toEqual(new Error('ERR'))
+		})
+
+		describe('bounded wait (prompt state)', () => {
+			it('rejects immediately when state is prompt and neither signal nor timeout is provided', async () => {
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
+				status.state = 'prompt'
+				status.addEventListener = vi.fn()
+				status.removeEventListener = vi.fn()
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				await expect(getPermission('microphone')).rejects.toMatchObject({
+					name: 'InvalidStateError',
+				})
+				// It must not start watching when it cannot ever settle
+				expect(status.addEventListener).not.toHaveBeenCalled()
+			})
+
+			it('rejects with TimeoutError when timeout elapses before the permission changes', async () => {
+				vi.useFakeTimers()
+				try {
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
+					status.state = 'prompt'
+					status.addEventListener = vi.fn()
+					status.removeEventListener = vi.fn()
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+
+					const promise = getPermission('microphone', { timeout: 1000 })
+					const expectation = expect(promise).rejects.toMatchObject({ name: 'TimeoutError' })
+					await vi.advanceTimersByTimeAsync(1000)
+					await expectation
+
+					// The change listener must be removed on timeout (no leak)
+					expect(status.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+				} finally {
+					vi.useRealTimers()
+				}
+			})
+
+			it('clears the timeout when the permission is granted before it elapses', async () => {
+				vi.useFakeTimers()
+				try {
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
+					status.state = 'prompt'
+					status.addEventListener = vi.fn((_event: string, listener: StatusChangeListener) => {
+						listener({ target: { state: 'granted' } })
+					})
+					status.removeEventListener = vi.fn()
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+
+					const promise = getPermission('microphone', { timeout: 1000 })
+					await expect(promise).resolves.toBe('granted')
+
+					// The scheduled timeout must have been cleared — no leaked timer left pending
+					expect(vi.getTimerCount()).toBe(0)
+				} finally {
+					vi.useRealTimers()
+				}
+			})
 		})
 
 		describe('AbortSignal', () => {
@@ -158,6 +216,21 @@ describe('getPermission', () => {
 				status.addEventListener = vi.fn()
 				status.removeEventListener = vi.fn()
 				// Abort synchronously inside the mock so signal is aborted when await resolves
+				mockPermissionsQuery.mockImplementationOnce(() => {
+					controller.abort()
+					return Promise.resolve(status)
+				})
+
+				await expect(getPermission('microphone', { signal: controller.signal })).rejects.toMatchObject({
+					name: 'AbortError',
+				})
+			})
+
+			it('rejects when aborted during query resolution even if the state resolves to granted', async () => {
+				const controller = new AbortController()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
+				status.state = 'granted'
+				// Abort synchronously inside the mock so the signal is aborted once the query settles
 				mockPermissionsQuery.mockImplementationOnce(() => {
 					controller.abort()
 					return Promise.resolve(status)
