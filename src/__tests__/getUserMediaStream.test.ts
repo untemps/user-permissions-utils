@@ -1,6 +1,8 @@
 import getUserMediaStream from '../getUserMediaStream'
 import {
 	flushMicrotasks,
+	setNavigatorApiUnsupported,
+	restoreNavigatorApi,
 	setupPermissionsMock,
 	teardownPermissionsMock,
 	setupMediaDevicesMock,
@@ -12,9 +14,8 @@ const FAKE_STREAM = {} as MediaStream
 
 describe('getUserMediaStream', () => {
 	describe('navigator.permissions is not implemented', () => {
-		beforeAll(() => {
-			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
-		})
+		beforeAll(() => setNavigatorApiUnsupported('permissions'))
+		afterAll(() => restoreNavigatorApi('permissions'))
 
 		it('rejects promise', async () => {
 			await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
@@ -32,9 +33,8 @@ describe('getUserMediaStream', () => {
 		afterAll(teardownPermissionsMock)
 
 		describe('navigator.mediaDevices is not implemented', () => {
-			beforeAll(() => {
-				;(globalThis.navigator as { mediaDevices?: MediaDevices }).mediaDevices = undefined
-			})
+			beforeAll(() => setNavigatorApiUnsupported('mediaDevices'))
+			afterAll(() => restoreNavigatorApi('mediaDevices'))
 
 			it('rejects promise', async () => {
 				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({

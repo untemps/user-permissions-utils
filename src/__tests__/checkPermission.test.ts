@@ -1,11 +1,16 @@
 import checkPermission from '../checkPermission'
-import { setupPermissionsMock, teardownPermissionsMock, type MockPermissionStatus } from './testUtils'
+import {
+	setNavigatorApiUnsupported,
+	restoreNavigatorApi,
+	setupPermissionsMock,
+	teardownPermissionsMock,
+	type MockPermissionStatus,
+} from './testUtils'
 
 describe('checkPermission', () => {
 	describe('navigator.permissions is not implemented', () => {
-		beforeAll(() => {
-			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
-		})
+		beforeAll(() => setNavigatorApiUnsupported('permissions'))
+		afterAll(() => restoreNavigatorApi('permissions'))
 
 		it('rejects promise', async () => {
 			await expect(checkPermission('microphone')).rejects.toMatchObject({

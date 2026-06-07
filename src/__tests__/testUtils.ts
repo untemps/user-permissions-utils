@@ -10,32 +10,72 @@ export interface MockPermissionStatus {
 
 export type StatusChangeListener = (event: { target: { state: PermissionState } }) => void
 
+// Save/restore originals so the suite never leaks mutated globals between blocks.
+// Each `stubProperty` is paired with a matching `restoreProperty` (in an `afterAll`),
+// so we capture the current value before overwriting it and reinstate it on teardown —
+// restoring the real ambient value (often "not implemented") instead of forcing
+// `undefined`, which is what made the suite order-dependent.
+const restorers: Record<string, () => void> = {}
+
+const stubProperty = (target: object, key: string, value: unknown): void => {
+	const original = (target as Record<string, unknown>)[key]
+	restorers[key] = () => {
+		;(target as Record<string, unknown>)[key] = original
+	}
+	;(target as Record<string, unknown>)[key] = value
+}
+
+const restoreProperty = (key: string): void => {
+	restorers[key]()
+	delete restorers[key]
+}
+
+export const setNavigatorApiUnsupported = (api: 'permissions' | 'mediaDevices'): void => {
+	stubProperty(globalThis.navigator, api, undefined)
+}
+
+export const restoreNavigatorApi = (api: 'permissions' | 'mediaDevices'): void => {
+	restoreProperty(api)
+}
+
 export const setupPermissionsMock = (mockQuery: Mock): void => {
-	globalThis.PermissionStatus = vi.fn(function () {
-		return { state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }
-	}) as unknown as typeof PermissionStatus
-	globalThis.Permissions = vi.fn(function () {
-		return { query: mockQuery }
-	}) as unknown as typeof Permissions
-	;(globalThis.navigator as { permissions?: Permissions }).permissions = new Permissions()
+	stubProperty(
+		globalThis,
+		'PermissionStatus',
+		vi.fn(function () {
+			return { state: 'granted', addEventListener: vi.fn(), removeEventListener: vi.fn() }
+		})
+	)
+	stubProperty(
+		globalThis,
+		'Permissions',
+		vi.fn(function () {
+			return { query: mockQuery }
+		})
+	)
+	stubProperty(globalThis.navigator, 'permissions', new Permissions())
 }
 
 export const teardownPermissionsMock = (): void => {
-	;(globalThis as { PermissionStatus?: typeof PermissionStatus }).PermissionStatus = undefined
-	;(globalThis as { Permissions?: typeof Permissions }).Permissions = undefined
-	;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
+	restoreProperty('permissions')
+	restoreProperty('Permissions')
+	restoreProperty('PermissionStatus')
 }
 
 export const setupMediaDevicesMock = (mockGetUserMedia: Mock): void => {
-	globalThis.MediaDevices = vi.fn(function () {
-		return { getUserMedia: mockGetUserMedia }
-	}) as unknown as typeof MediaDevices
-	;(globalThis.navigator as { mediaDevices?: MediaDevices }).mediaDevices = new MediaDevices()
+	stubProperty(
+		globalThis,
+		'MediaDevices',
+		vi.fn(function () {
+			return { getUserMedia: mockGetUserMedia }
+		})
+	)
+	stubProperty(globalThis.navigator, 'mediaDevices', new MediaDevices())
 }
 
 export const teardownMediaDevicesMock = (): void => {
-	;(globalThis as { MediaDevices?: typeof MediaDevices }).MediaDevices = undefined
-	;(globalThis.navigator as { mediaDevices?: MediaDevices }).mediaDevices = undefined
+	restoreProperty('mediaDevices')
+	restoreProperty('MediaDevices')
 }
 
 export const teardownPermissionsAndMediaDevicesMock = (): void => {

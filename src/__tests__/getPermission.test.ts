@@ -1,6 +1,8 @@
 import getPermission from '../getPermission'
 import {
 	flushMicrotasks,
+	setNavigatorApiUnsupported,
+	restoreNavigatorApi,
 	setupPermissionsMock,
 	teardownPermissionsMock,
 	type MockPermissionStatus,
@@ -9,9 +11,8 @@ import {
 
 describe('getPermission', () => {
 	describe('navigator.permissions is not implemented', () => {
-		beforeAll(() => {
-			;(globalThis.navigator as { permissions?: Permissions }).permissions = undefined
-		})
+		beforeAll(() => setNavigatorApiUnsupported('permissions'))
+		afterAll(() => restoreNavigatorApi('permissions'))
 
 		it('rejects promise', async () => {
 			await expect(getPermission('microphone')).rejects.toMatchObject({
