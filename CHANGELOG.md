@@ -1,3 +1,17 @@
+# [2.0.0-beta.4](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.3...v2.0.0-beta.4) (2026-06-07)
+
+
+### Bug Fixes
+
+* Prevent getPermission from hanging on 'prompt' state and leaking a listener ([#135](https://github.com/untemps/user-permissions-utils/issues/135)) ([d69e68f](https://github.com/untemps/user-permissions-utils/commit/d69e68fc68f5c45dfa56dd52c4ca7c262eb579c1))
+
+
+### BREAKING CHANGES
+
+* `getPermission` no longer waits unboundedly on a `'prompt'` state and now honours an aborted `signal` on every resolved state.
+- On a `'prompt'` state with neither `signal` nor `timeout`, it rejects immediately with an `InvalidStateError` instead of returning a promise that never settles. Pass `{ timeout }` and/or `{ signal }` to bound the wait, or trigger the real prompt via `getUserMediaStream`.
+- An already-aborted (or aborted-during-query) `signal` now rejects with the signal's reason (e.g. `AbortError`) on every resolved state, including `'granted'`/`'denied'` — previously only the `'prompt'` wait checked it. Callers that abort only after the permission has settled are unaffected.
+
 # [2.0.0-beta.3](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.2...v2.0.0-beta.3) (2026-06-06)
 
 
