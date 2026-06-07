@@ -18,6 +18,12 @@ export interface MockPermissionStatus extends EventTarget {
 const restorers: Record<string, () => void> = {}
 
 const stubProperty = (target: object, key: string, value: unknown): void => {
+	// Single-slot map: stubbing an already-stubbed key would capture the *stubbed* value as
+	// the "original" and silently lose the real one, so restore would never reinstate it.
+	// Fail loudly instead — every `stubProperty` must be balanced by `restoreProperty` first.
+	if (key in restorers) {
+		throw new Error(`testUtils: "${key}" is already stubbed; restore it before stubbing it again.`)
+	}
 	const original = (target as Record<string, unknown>)[key]
 	restorers[key] = () => {
 		;(target as Record<string, unknown>)[key] = original
