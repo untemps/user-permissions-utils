@@ -9,7 +9,7 @@ yarn test          # tests en mode watch (Vitest)
 yarn test:ci       # tests one-shot avec coverage (utilisé par le pre-commit hook et CI)
 yarn typecheck     # vérification de types TypeScript (tsc --noEmit)
 yarn build         # compile CJS + ES + UMD + déclarations .d.ts vers dist/ via Vite
-yarn lint          # ESLint (typescript-eslint) sur src/
+yarn lint          # ESLint (typescript-eslint) sur tout le dépôt (src/, demo/, fichiers de config)
 yarn prettier      # formate tous les .js / .ts (hors .prettierignore)
 ```
 
