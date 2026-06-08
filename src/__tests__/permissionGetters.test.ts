@@ -66,14 +66,18 @@ describe('dedicated permission getters', () => {
 		})
 
 		describe('options forwarding', () => {
-			it('forwards the signal to getPermission (already-aborted signal rejects)', async () => {
+			// Parametrized over every getter: an already-aborted signal makes getPermission bail out
+			// (`signal?.throwIfAborted()`) before it ever queries — but only if `options` was actually
+			// forwarded. This proves the pass-through for all 11 wrappers, which neither the name-only
+			// assertion above nor line coverage can: a wrapper that dropped `options` would instead
+			// query and never reject with `AbortError` here.
+			it.each(getters)('$label forwards the signal to getPermission', async ({ getter }) => {
 				const controller = new AbortController()
 				controller.abort()
 
-				await expect(getCameraPermission({ signal: controller.signal })).rejects.toMatchObject({
+				await expect(getter({ signal: controller.signal })).rejects.toMatchObject({
 					name: 'AbortError',
 				})
-				// getPermission bails out on the aborted signal before ever querying.
 				expect(mockPermissionsQuery).not.toHaveBeenCalled()
 			})
 
