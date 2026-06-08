@@ -1,3 +1,10 @@
+# [2.0.0-beta.7](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.6...v2.0.0-beta.7) (2026-06-08)
+
+
+### Bug Fixes
+
+* Stop late-resolving MediaStream tracks when getUserMediaStream is aborted ([#140](https://github.com/untemps/user-permissions-utils/issues/140)) ([15657a2](https://github.com/untemps/user-permissions-utils/commit/15657a2a739dd90580d7c8638730deaa0935c044))
+
 # [2.0.0-beta.6](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.5...v2.0.0-beta.6) (2026-06-08)
 
 # [2.0.0-beta.5](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.4...v2.0.0-beta.5) (2026-06-07)
