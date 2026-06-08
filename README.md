@@ -95,7 +95,7 @@ const init = async () => {
 
 `getUserMediaStream`:
 
-Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation.
+Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation. If the signal aborts while acquisition is still in flight, a stream that resolves afterwards is torn down automatically (its tracks are stopped), so the camera or microphone is never left active.
 
 The `permissionName` and `mediaStreamConstraints` must match the same media device:
 

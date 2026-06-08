@@ -177,6 +177,87 @@ describe('getUserMediaStream', () => {
 						getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
 					).resolves.toBe(FAKE_STREAM)
 				})
+
+				it('stops the tracks of a stream that resolves after the abort', async () => {
+					const controller = new AbortController()
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
+					status.state = 'granted'
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+
+					// A faithful stream mock whose track exposes a `stop` spy — the plain
+					// `FAKE_STREAM` used elsewhere has no `getTracks()`, so it cannot witness the leak.
+					const stop = vi.fn()
+					const lateStream = {
+						getTracks: () => [{ stop } as unknown as MediaStreamTrack],
+					} as unknown as MediaStream
+					let resolveStream!: (stream: MediaStream) => void
+					mockMediaDevicesGetUserMedia.mockImplementationOnce(
+						() =>
+							new Promise<MediaStream>((resolve) => {
+								resolveStream = resolve
+							})
+					)
+
+					const promise = getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+					await flushMicrotasks()
+					controller.abort()
+
+					await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+
+					// `getUserMedia()` resolves *after* the abort: the orphaned stream must be torn down.
+					// Observe the teardown across a macrotask boundary — the guard runs on a microtask off
+					// `mediaPromise`, and a single microtask tick proved timing-fragile here.
+					resolveStream(lateStream)
+					await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+					expect(stop).toHaveBeenCalledOnce()
+				})
+
+				it('does not raise an unhandled rejection when getUserMedia rejects after the abort', async () => {
+					const controller = new AbortController()
+					const status = new PermissionStatus() as unknown as MockPermissionStatus
+					status.state = 'granted'
+					mockPermissionsQuery.mockResolvedValueOnce(status)
+
+					let rejectStream!: (reason: unknown) => void
+					mockMediaDevicesGetUserMedia.mockImplementationOnce(
+						() =>
+							new Promise<MediaStream>((_, reject) => {
+								rejectStream = reject
+							})
+					)
+
+					// `process` is a Node global absent from the DOM-only typings, reached via `globalThis`.
+					const proc = (
+						globalThis as unknown as {
+							process: {
+								on(event: 'unhandledRejection', listener: (reason: unknown) => void): void
+								off(event: 'unhandledRejection', listener: (reason: unknown) => void): void
+							}
+						}
+					).process
+					const onUnhandled = vi.fn()
+					proc.on('unhandledRejection', onUnhandled)
+					try {
+						const promise = getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+						await flushMicrotasks()
+						controller.abort()
+
+						await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+
+						// `getUserMedia()` rejects *after* the race already settled. `Promise.race` itself
+						// consumes `mediaPromise`'s rejection, so this specifically guards the teardown's own
+						// `catch` sink (complementary to the track-stop test above, which guards the teardown
+						// body): without the `catch`, `await mediaPromise` would rethrow and leak an unhandled
+						// rejection.
+						rejectStream(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+						await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+						expect(onUnhandled).not.toHaveBeenCalled()
+					} finally {
+						proc.off('unhandledRejection', onUnhandled)
+					}
+				})
 			})
 		})
 	})
