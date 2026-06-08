@@ -69,6 +69,40 @@ const init = async () => {
 controller.abort()
 ```
 
+**Dedicated permission getters:**
+
+For permissions with a fixed name, dedicated wrappers spare you from typing (and mistyping) the permission string. Each one calls `getPermission` with a hardcoded name and forwards the same options (`{ signal?, timeout? }`), so it shares the exact passive-watcher contract described above — including the **bounded-wait** requirement on `'prompt'`.
+
+| Function | Permission name |
+|---|---|
+| `getCameraPermission` | `'camera'` |
+| `getClipboardReadPermission` | `'clipboard-read'` |
+| `getClipboardWritePermission` | `'clipboard-write'` |
+| `getGeolocationPermission` | `'geolocation'` |
+| `getMicrophonePermission` | `'microphone'` |
+| `getMidiPermission` | `'midi'` |
+| `getNotificationsPermission` | `'notifications'` |
+| `getPersistentStoragePermission` | `'persistent-storage'` |
+| `getPushPermission` | `'push'` |
+| `getScreenWakeLockPermission` | `'screen-wake-lock'` |
+| `getStorageAccessPermission` | `'storage-access'` |
+
+```javascript
+import { getNotificationsPermission } from '@untemps/user-permissions-utils'
+
+const init = async () => {
+    try {
+        // Equivalent to getPermission('notifications', { timeout: 5000 })
+        await getNotificationsPermission({ timeout: 5000 })
+        ...
+    } catch (error) {
+        console.error(error)
+    }
+}
+```
+
+> `clipboard-read` and `clipboard-write` are valid permission names at runtime but are not (yet) part of the DOM `PermissionName` type, so those two wrappers assert the name internally.
+
 `checkPermission`:
 
 Returns a promise resolved with the current permission state (`'granted'`, `'denied'` or `'prompt'`) immediately. Unlike `getPermission`, it never waits for user interaction and never rejects on `'denied'`. It rejects when the Permissions API is unsupported, and otherwise propagates any error from `navigator.permissions.query()` (e.g. an unrecognized permission name). Useful to read the current state upfront (show a permission banner, disable a button, branch UI logic) without triggering a prompt.
@@ -196,8 +230,4 @@ yarn dev
 
 ## Todos
 
--   Add permissions-based API:
-    -   clipboard
-    -   geolocation
-    -   notification
-    -   ...
+-   Extend the dedicated permission getters to sensor/device permissions (`accelerometer`, `bluetooth`, `gyroscope`, `magnetometer`, …) once they land in the DOM `PermissionName` type
