@@ -12,6 +12,8 @@ Collection of utility functions to manage user permissions.
 yarn add @untemps/user-permissions-utils
 ```
 
+**Requirements:** Node.js `>= 20`.
+
 ## TypeScript
 
 This package is written in TypeScript and ships its own type declarations — no extra `@types/...` package is required. The option types are exported for convenience:
@@ -173,6 +175,23 @@ import { isNavigatorMediaDevicesSupported } from '@untemps/user-permissions-util
 if (!isNavigatorMediaDevicesSupported()) {
     console.warn('Navigator MediaDevices API is not supported in this browser')
 }
+```
+
+## Development
+
+The development toolchain targets Node 24, pinned via [`.nvmrc`](.nvmrc):
+
+```bash
+nvm use
+yarn install
+```
+
+Consumers only need Node `>= 20` (see [Installation](#installation)); the higher floor is for working on the project itself.
+
+To launch the interactive demo (Vite dev server) and exercise the utilities against real browser permission prompts:
+
+```bash
+yarn dev
 ```
 
 ## Todos
