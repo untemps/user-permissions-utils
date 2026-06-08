@@ -246,9 +246,10 @@ describe('getUserMediaStream', () => {
 						await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
 
 						// `getUserMedia()` rejects *after* the race already settled. `Promise.race` itself
-						// consumes `mediaPromise`'s rejection, so this specifically guards the guard chain's
-						// own `.catch(() => {})` sink (complementary to the track-stop test above, which guards
-						// the teardown body): without `.catch`, `mediaPromise.then(...)` leaks an unhandled rejection.
+						// consumes `mediaPromise`'s rejection, so this specifically guards the teardown's own
+						// `catch` sink (complementary to the track-stop test above, which guards the teardown
+						// body): without the `catch`, `await mediaPromise` would rethrow and leak an unhandled
+						// rejection.
 						rejectStream(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
 						await new Promise<void>((resolve) => setTimeout(resolve, 0))
 

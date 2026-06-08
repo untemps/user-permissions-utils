@@ -42,16 +42,21 @@ const getUserMediaStream = async (
 	// below rejects with `signal.reason` but `mediaPromise` keeps running. Should it later
 	// resolve with a live stream, the caller already holds the rejection — and no reference to
 	// the stream — so nothing would stop its tracks and the camera/microphone would stay
-	// active. Guard the resolution to tear the orphaned stream down. The trailing
-	// `.catch(() => {})` also swallows a late rejection so it never surfaces as an unhandled
-	// rejection once the race has already settled.
-	mediaPromise
-		.then((stream) => {
+	// active. Tear the orphaned stream down once it settles. This cannot be awaited inline: the
+	// caller must receive the abort rejection from the race immediately, not after the slow
+	// `getUserMedia()` finally settles — so it runs detached, fire-and-forget.
+	const teardownIfAborted = async () => {
+		try {
+			const stream = await mediaPromise
 			if (signal.aborted) {
 				stream.getTracks().forEach((track) => track.stop())
 			}
-		})
-		.catch(() => {})
+		} catch {
+			// Once the race has settled with the abort, this is `mediaPromise`'s only remaining
+			// consumer: swallow a late rejection so it never surfaces as an unhandled rejection.
+		}
+	}
+	void teardownIfAborted()
 
 	let onAbort!: () => void
 	const abortPromise = new Promise<never>((_, reject) => {
