@@ -261,7 +261,8 @@
 						<span class="support-value" id="permission-camera">—</span>
 					</div>
 					<p class="note">
-						To reset permissions to 'prompt', click the lock or info icon in the browser address bar → reset permissions.
+						To reset permissions to 'prompt', click the lock or info icon in the browser address bar → reset
+						permissions.
 					</p>
 				</div>
 			</div>
@@ -271,15 +272,39 @@
 				<div class="card-header">getUserMediaStream</div>
 				<div class="card-body">
 					<div class="btn-row">
-						<button data-action="getUserMediaStream" data-permission="microphone" data-constraints='{"audio":true}'>
+						<button
+							data-action="getUserMediaStream"
+							data-permission="microphone"
+							data-constraints='{"audio":true}'
+						>
 							microphone
 						</button>
-						<button data-action="getUserMediaStream" data-permission="camera" data-constraints='{"video":true}'>
+						<button
+							data-action="getUserMediaStream"
+							data-permission="camera"
+							data-constraints='{"video":true}'
+						>
 							camera
 						</button>
 						<button id="abort-btn" class="danger">abort</button>
 					</div>
 					<div class="result" id="stream-result"></div>
+				</div>
+			</div>
+
+			<!-- getNotificationsPermission -->
+			<div class="card">
+				<div class="card-header">getNotificationsPermission</div>
+				<div class="card-body">
+					<div class="btn-row">
+						<button id="notifications-btn">request notifications</button>
+					</div>
+					<p class="note">
+						Starts <code>getNotificationsPermission</code> as a passive watcher (10s timeout) and triggers
+						the real browser dialog via <code>Notification.requestPermission()</code> so the watcher can
+						resolve once the permission becomes 'granted'.
+					</p>
+					<div class="result" id="notifications-result"></div>
 				</div>
 			</div>
 

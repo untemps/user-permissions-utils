@@ -2,6 +2,7 @@ import {
 	isNavigatorPermissionsSupported,
 	isNavigatorMediaDevicesSupported,
 	getUserMediaStream,
+	getNotificationsPermission,
 	checkPermission,
 } from '../src/index'
 
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	})
 
 	document.getElementById('abort-btn')!.addEventListener('click', handleAbort)
+	document.getElementById('notifications-btn')!.addEventListener('click', handleNotificationsPermission)
 })
 
 function initSupportStatus(): void {
@@ -98,6 +100,32 @@ async function handleGetUserMediaStream(
 		}
 	} finally {
 		activeController = null
+	}
+}
+
+async function handleNotificationsPermission(): Promise<void> {
+	setResult('notifications-result', 'watching notifications permission…', 'pending')
+	log('getNotificationsPermission({ timeout: 10000 }) →', 'pending')
+
+	// Passive watcher: resolves once the permission becomes 'granted'. It never surfaces a dialog
+	// on its own, so we trigger the real prompt below to let its `change` event settle the wait.
+	const watcher = getNotificationsPermission({ timeout: 10000 })
+
+	if (typeof Notification !== 'undefined') {
+		void Notification.requestPermission()
+	} else {
+		log('Notification API not supported — watcher will time out', 'warning')
+	}
+
+	try {
+		const state = await watcher
+		setResult('notifications-result', `→ ${state}`, 'success')
+		log(`getNotificationsPermission → ${state}`, 'success')
+	} catch (err) {
+		const error = err as DOMException
+		const type = error.name === 'TimeoutError' ? 'warning' : 'error'
+		setResult('notifications-result', `→ ${error.name}: ${error.message}`, type)
+		log(`getNotificationsPermission ✗ ${error.name}: ${error.message}`, type)
 	}
 }
 
