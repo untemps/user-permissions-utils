@@ -37,14 +37,10 @@ const getUserMediaStream = async (
 	const mediaPromise = navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
 	if (!signal) return mediaPromise
 
-	// `getUserMedia()` has no native cancellation and `Promise.race` does not cancel the
-	// losing promise: when the signal aborts while `getUserMedia()` is still pending, the race
-	// below rejects with `signal.reason` but `mediaPromise` keeps running. Should it later
-	// resolve with a live stream, the caller already holds the rejection — and no reference to
-	// the stream — so nothing would stop its tracks and the camera/microphone would stay
-	// active. Tear the orphaned stream down once it settles. This cannot be awaited inline: the
-	// caller must receive the abort rejection from the race immediately, not after the slow
-	// `getUserMedia()` finally settles — so it runs detached, fire-and-forget.
+	// `Promise.race` does not cancel the loser: if the signal aborts while `getUserMedia()` is
+	// still pending, the race rejects but `mediaPromise` keeps running and may resolve a stream
+	// the caller never sees — leaving the camera/microphone live. Stop its tracks once it
+	// settles, detached so the caller still receives the abort rejection immediately.
 	const teardownIfAborted = async () => {
 		try {
 			const stream = await mediaPromise
@@ -52,8 +48,7 @@ const getUserMediaStream = async (
 				stream.getTracks().forEach((track) => track.stop())
 			}
 		} catch {
-			// Once the race has settled with the abort, this is `mediaPromise`'s only remaining
-			// consumer: swallow a late rejection so it never surfaces as an unhandled rejection.
+			// Swallow a late rejection so it never surfaces as unhandled once the race has settled.
 		}
 	}
 	void teardownIfAborted()
