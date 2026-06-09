@@ -32,7 +32,7 @@ Watches a permission and resolves with `'granted'` once it is granted. It is a *
 
 When the state is `'prompt'`, `getPermission` waits for the `change` event — which only fires once _something else_ triggers the real request (e.g. `getUserMediaStream`, `geolocation.getCurrentPosition`) and the user responds. Since nothing transitions a `'prompt'` state on its own, **the wait must be bounded**: pass a `timeout` (rejects with a `TimeoutError` once elapsed), a `signal`, or both. If you provide neither while the state is `'prompt'`, the promise rejects immediately with an `InvalidStateError` instead of hanging forever.
 
-To actually surface a permission dialog, use `getUserMediaStream` (which calls `navigator.mediaDevices.getUserMedia()`) or trigger the relevant browser API yourself — `getPermission` only observes the state.
+To actually surface a permission dialog, use one of the **active** dedicated getters below (e.g. `getCameraPermission`, `getGeolocationPermission`) or `getUserMediaStream` — `getPermission` itself only observes the state.
 
 ```javascript
 import { getPermission } from '@untemps/user-permissions-utils'
@@ -71,35 +71,46 @@ controller.abort()
 
 **Dedicated permission getters:**
 
-For permissions with a fixed name, dedicated wrappers spare you from typing (and mistyping) the permission string. Each one calls `getPermission` with a hardcoded name and forwards the same options (`{ signal?, timeout? }`), so it shares the exact passive-watcher contract described above — including the **bounded-wait** requirement on `'prompt'`.
+For permissions with a fixed name, dedicated wrappers spare you from typing (and mistyping) the permission string — and, for most of them, surface the prompt for you so you never reach for the native browser API. All forward the same `{ signal?, timeout? }` options and resolve with `'granted'`.
 
-| Function | Permission name |
-|---|---|
-| `getCameraPermission` | `'camera'` |
-| `getClipboardReadPermission` | `'clipboard-read'` |
-| `getClipboardWritePermission` | `'clipboard-write'` |
-| `getGeolocationPermission` | `'geolocation'` |
-| `getMicrophonePermission` | `'microphone'` |
-| `getMidiPermission` | `'midi'` |
-| `getNotificationsPermission` | `'notifications'` |
-| `getPersistentStoragePermission` | `'persistent-storage'` |
-| `getPushPermission` | `'push'` |
-| `getScreenWakeLockPermission` | `'screen-wake-lock'` |
-| `getStorageAccessPermission` | `'storage-access'` |
+**Active getters** read the current state and, on `'prompt'`, fire the matching native API to surface the real dialog, resolving once granted (or rejecting on denial / timeout / abort):
+
+| Function | Permission name | Prompt surfaced via |
+|---|---|---|
+| `getCameraPermission` | `'camera'` | `getUserMediaStream` |
+| `getMicrophonePermission` | `'microphone'` | `getUserMediaStream` |
+| `getGeolocationPermission` | `'geolocation'` | `navigator.geolocation.getCurrentPosition` |
+| `getNotificationsPermission` | `'notifications'` | `Notification.requestPermission` |
+| `getMidiPermission` | `'midi'` | `navigator.requestMIDIAccess({ sysex: true })` |
+| `getPersistentStoragePermission` | `'persistent-storage'` | `navigator.storage.persist` |
+| `getScreenWakeLockPermission` | `'screen-wake-lock'` | `navigator.wakeLock.request('screen')` |
+| `getStorageAccessPermission` | `'storage-access'` | `document.requestStorageAccess` |
 
 ```javascript
-import { getNotificationsPermission } from '@untemps/user-permissions-utils'
+import { getCameraPermission } from '@untemps/user-permissions-utils'
 
 const init = async () => {
     try {
-        // Equivalent to getPermission('notifications', { timeout: 5000 })
-        await getNotificationsPermission({ timeout: 5000 })
+        // Surfaces the camera prompt and resolves once granted (times out after 20s)
+        await getCameraPermission({ timeout: 20000 })
         ...
     } catch (error) {
         console.error(error)
     }
 }
 ```
+
+> Use `getUserMediaStream` instead of `getCameraPermission` / `getMicrophonePermission` when you need the resulting `MediaStream` rather than just the grant.
+
+**Passive getters** only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library cannot trigger them from a permission name alone without consumer-owned infrastructure or a privacy-sensitive side effect. The **bounded-wait** requirement on `'prompt'` therefore applies (pass `signal` and/or `timeout`):
+
+| Function | Permission name | Why it stays passive |
+|---|---|---|
+| `getPushPermission` | `'push'` | needs a registered service worker and a VAPID key |
+| `getClipboardReadPermission` | `'clipboard-read'` | the only way to prompt is to read the user's clipboard |
+| `getClipboardWritePermission` | `'clipboard-write'` | the only way to prompt is to overwrite the user's clipboard |
+
+Trigger those yourself (e.g. `registration.pushManager.subscribe(...)`, `navigator.clipboard.read()`), then let the passive getter resolve.
 
 > `clipboard-read` and `clipboard-write` are valid permission names at runtime but are not (yet) part of the DOM `PermissionName` type, so those two wrappers assert the name internally.
 
