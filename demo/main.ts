@@ -21,9 +21,9 @@ type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 interface PermissionEntry {
 	name: string
 	getter: PermissionGetter
-	// Fires the real browser API to surface the prompt, resolving when the user/UA has responded.
-	// `push` has no practical in-page trigger and is left without one.
-	trigger?: () => Promise<unknown>
+	// Passive getters (push, clipboard) never surface a dialog — the library cannot trigger them
+	// without consumer-owned infrastructure or a privacy-sensitive side effect — so they only watch.
+	passive?: boolean
 }
 
 interface ApiSupport {
@@ -31,7 +31,7 @@ interface ApiSupport {
 	supported: () => boolean
 }
 
-type OutcomeKind = 'granted' | 'denied' | 'prompt' | 'timeout' | 'aborted' | 'error'
+type OutcomeKind = 'granted' | 'denied' | 'timeout' | 'aborted' | 'error'
 interface Outcome {
 	kind: OutcomeKind
 	detail?: string
@@ -39,23 +39,24 @@ interface Outcome {
 
 let activeController: AbortController | null = null
 
-// Every permission the library exposes through a dedicated getter, paired with the browser API
-// that actually prompts for it. `name` doubles as the Permissions API query name.
+// Every permission the library exposes through a dedicated getter. The active getters surface the
+// real prompt themselves; the passive ones only watch the state. `name` doubles as the Permissions
+// API query name.
 const PERMISSIONS: PermissionEntry[] = [
-	{ name: 'camera', getter: getCameraPermission, trigger: () => triggerUserMedia({ video: true }) },
-	{ name: 'microphone', getter: getMicrophonePermission, trigger: () => triggerUserMedia({ audio: true }) },
-	{ name: 'geolocation', getter: getGeolocationPermission, trigger: triggerGeolocation },
-	{ name: 'notifications', getter: getNotificationsPermission, trigger: triggerNotifications },
-	{ name: 'midi', getter: getMidiPermission, trigger: triggerMidi },
-	{ name: 'push', getter: getPushPermission },
-	{ name: 'persistent-storage', getter: getPersistentStoragePermission, trigger: triggerPersistentStorage },
-	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission, trigger: triggerWakeLock },
-	{ name: 'storage-access', getter: getStorageAccessPermission, trigger: triggerStorageAccess },
-	{ name: 'clipboard-read', getter: getClipboardReadPermission, trigger: triggerClipboardRead },
-	{ name: 'clipboard-write', getter: getClipboardWritePermission, trigger: triggerClipboardWrite },
+	{ name: 'camera', getter: getCameraPermission },
+	{ name: 'microphone', getter: getMicrophonePermission },
+	{ name: 'geolocation', getter: getGeolocationPermission },
+	{ name: 'notifications', getter: getNotificationsPermission },
+	{ name: 'midi', getter: getMidiPermission },
+	{ name: 'persistent-storage', getter: getPersistentStoragePermission },
+	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission },
+	{ name: 'storage-access', getter: getStorageAccessPermission },
+	{ name: 'push', getter: getPushPermission, passive: true },
+	{ name: 'clipboard-read', getter: getClipboardReadPermission, passive: true },
+	{ name: 'clipboard-write', getter: getClipboardWritePermission, passive: true },
 ]
 
-// Every browser API the demo relies on to surface a prompt — shown in the API Support card.
+// Every browser API the dedicated getters rely on to surface a prompt — shown in the API Support card.
 const APIS: ApiSupport[] = [
 	{ label: 'Permissions', supported: isNavigatorPermissionsSupported },
 	{ label: 'MediaDevices', supported: isNavigatorMediaDevicesSupported },
@@ -76,7 +77,6 @@ const FRIENDLY_ERRORS: Record<string, string> = {
 	NOT_SUPPORTED_ERR: 'not supported in this browser',
 	SecurityError: 'blocked by the browser',
 	TypeError: 'not queryable in this browser',
-	InvalidStateError: 'needs a trigger to settle',
 }
 
 const GETTER_TIMEOUT = 20000
@@ -160,59 +160,32 @@ function initDedicatedGetters(entries: PermissionEntry[]): void {
 }
 
 async function handleGetPermission(entry: PermissionEntry): Promise<void> {
-	// A new watch supersedes any pending one; the Abort button cancels the current watch.
+	// A new acquisition supersedes any pending one; the Abort button cancels the current one.
 	activeController?.abort()
 	const controller = new AbortController()
 	activeController = controller
 
 	const resultId = `getter-result-${entry.name}`
 	setResult(resultId, 'watching…', 'pending')
-	log(`getPermission("${entry.name}") → watching…`, 'pending')
+	log(`${entry.name} → watching…`, 'pending')
 
-	// Race the library's passive watcher (resolves on the Permissions `change` event) against the
-	// real browser API: firing it surfaces the prompt, and once it settles we re-read the state
-	// with checkPermission — so the watch resolves even when no `change` event ever arrives.
-	const races: Promise<Outcome>[] = [watchOutcome(entry, controller.signal)]
-	if (entry.trigger) {
-		races.push(triggerOutcome(entry))
-	}
-
-	const outcome = await Promise.race(races)
-
-	// Tear down the losing watcher (clears its timeout/listener) and release the slot.
-	controller.abort()
-	if (activeController === controller) {
-		activeController = null
+	// The getter does it all: it reads the state and, on 'prompt', surfaces the real prompt and
+	// resolves once the permission settles. No native API call here — the library owns the trigger.
+	let outcome: Outcome
+	try {
+		await entry.getter({ signal: controller.signal, timeout: GETTER_TIMEOUT })
+		outcome = { kind: 'granted' }
+	} catch (err) {
+		outcome = errorToOutcome(err as DOMException)
+	} finally {
+		if (activeController === controller) {
+			activeController = null
+		}
 	}
 
 	const { text, type } = describeOutcome(entry, outcome)
 	setResult(resultId, `→ ${text}`, type)
-	log(`getPermission("${entry.name}") → ${text}`, type)
-}
-
-// The library watcher: resolves with 'granted', or maps its rejection to a friendly outcome.
-async function watchOutcome(entry: PermissionEntry, signal: AbortSignal): Promise<Outcome> {
-	try {
-		await entry.getter({ signal, timeout: GETTER_TIMEOUT })
-		return { kind: 'granted' }
-	} catch (err) {
-		return errorToOutcome(err as DOMException)
-	}
-}
-
-// The trigger path: fire the real API, then read the resulting state with checkPermission.
-async function triggerOutcome(entry: PermissionEntry): Promise<Outcome> {
-	try {
-		await entry.trigger?.()
-	} catch {
-		// The trigger rejects on denial/blocking; the checkPermission read below reflects the state.
-	}
-	try {
-		const state = await checkPermission(entry.name as PermissionName)
-		return { kind: state }
-	} catch (err) {
-		return errorToOutcome(err as DOMException)
-	}
+	log(`${entry.name} → ${text}`, type)
 }
 
 function errorToOutcome(err: DOMException): Outcome {
@@ -235,11 +208,9 @@ function describeOutcome(entry: PermissionEntry, outcome: Outcome): { text: stri
 			return { text: 'granted', type: 'success' }
 		case 'denied':
 			return { text: 'denied', type: 'warning' }
-		case 'prompt':
-			return { text: 'dismissed — no choice made', type: 'warning' }
 		case 'timeout':
 			return {
-				text: entry.trigger ? 'timed out — no response' : 'no in-page trigger — timed out',
+				text: entry.passive ? 'passive watcher — no prompt to surface' : 'timed out — no response',
 				type: 'warning',
 			}
 		case 'aborted':
@@ -256,63 +227,10 @@ function friendlyError(err: DOMException): string {
 function handleAbort(): void {
 	if (activeController) {
 		activeController.abort()
-		log('abort — cancelled the pending permission watch', 'warning')
+		log('abort — cancelled the pending permission acquisition', 'warning')
 	} else {
 		log('abort — no active operation', 'warning')
 	}
-}
-
-function triggerUserMedia(constraints: MediaStreamConstraints): Promise<void> {
-	const media = navigator.mediaDevices?.getUserMedia(constraints)
-	if (!media) {
-		return Promise.resolve()
-	}
-	return media.then((stream) => stream.getTracks().forEach((track) => track.stop()))
-}
-
-function triggerGeolocation(): Promise<void> {
-	return new Promise((resolve) => {
-		if (!('geolocation' in navigator)) {
-			resolve()
-			return
-		}
-		navigator.geolocation.getCurrentPosition(
-			() => resolve(),
-			() => resolve()
-		)
-	})
-}
-
-function triggerNotifications(): Promise<unknown> {
-	return 'Notification' in window ? Notification.requestPermission() : Promise.resolve()
-}
-
-function triggerMidi(): Promise<unknown> {
-	return navigator.requestMIDIAccess?.({ sysex: true }) ?? Promise.resolve()
-}
-
-function triggerPersistentStorage(): Promise<unknown> {
-	return navigator.storage?.persist?.() ?? Promise.resolve()
-}
-
-function triggerWakeLock(): Promise<unknown> {
-	const lock = navigator.wakeLock?.request('screen')
-	if (!lock) {
-		return Promise.resolve()
-	}
-	return lock.then((sentinel) => sentinel.release())
-}
-
-function triggerStorageAccess(): Promise<unknown> {
-	return document.requestStorageAccess?.() ?? Promise.resolve()
-}
-
-function triggerClipboardRead(): Promise<unknown> {
-	return navigator.clipboard?.read?.() ?? Promise.resolve()
-}
-
-function triggerClipboardWrite(): Promise<unknown> {
-	return navigator.clipboard?.writeText?.('') ?? Promise.resolve()
 }
 
 function setResult(id: string, text: string, type: string): void {

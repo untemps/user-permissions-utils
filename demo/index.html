@@ -315,11 +315,14 @@
 				<div class="card-body">
 					<div id="getter-rows" class="stack"></div>
 					<p class="note">
-						Each button watches the permission with <code>get…Permission({ signal, timeout })</code> and
-						fires the matching browser API to surface the prompt.<br />Whichever settles first wins — the
-						<code>change</code> event, or the API result re-read with <code>checkPermission</code> — so the
-						result always shows the real outcome (granted, denied, dismissed, or a friendly error) instead
-						of timing out.<br /><code style="color: var(--error)">abort</code> cancels the pending watch.
+						Each button calls <code>get…Permission({ signal, timeout })</code> — the library surfaces the
+						real prompt itself and resolves <code>granted</code> (or rejects denied / timed out / cancelled),
+						with no native browser API called here.<br /><code>push</code> and <code>clipboard-*</code> are
+						passive: the library can't prompt for them without consumer infrastructure or clobbering the
+						clipboard, so they reflect the current state or time out.<br /><code style="color: var(--error)"
+							>abort</code
+						>
+						cancels the pending acquisition.
 					</p>
 				</div>
 			</div>
