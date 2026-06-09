@@ -1,5 +1,3 @@
-import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
-
 export interface GetPermissionOptions {
 	signal?: AbortSignal
 	timeout?: number
@@ -36,7 +34,7 @@ const getPermission = async (
 	permissionName: PermissionName,
 	{ signal, timeout }: GetPermissionOptions = {}
 ): Promise<'granted'> => {
-	if (!isNavigatorPermissionsSupported()) {
+	if (!navigator.permissions) {
 		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
 	}
 

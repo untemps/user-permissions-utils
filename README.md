@@ -198,29 +198,7 @@ const init = async () => {
 controller.abort()
 ```
 
-`isNavigatorPermissionsSupported`:
-
-Returns `true` if the browser supports `navigator.permissions`
-
-```javascript
-import { isNavigatorPermissionsSupported } from '@untemps/user-permissions-utils'
-
-if (!isNavigatorPermissionsSupported()) {
-    console.warn('Navigator Permissions API is not supported in this browser')
-}
-```
-
-`isNavigatorMediaDevicesSupported`:
-
-Returns `true` if the browser supports `navigator.mediaDevices`
-
-```javascript
-import { isNavigatorMediaDevicesSupported } from '@untemps/user-permissions-utils'
-
-if (!isNavigatorMediaDevicesSupported()) {
-    console.warn('Navigator MediaDevices API is not supported in this browser')
-}
-```
+> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NOT_SUPPORTED_ERR` `DOMException` when the Permissions API (or, for `getUserMediaStream`, MediaDevices) is unavailable. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
 
 ## Development
 

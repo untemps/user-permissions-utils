@@ -1,4 +1,3 @@
-import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
 import type { GetPermissionOptions } from './getPermission'
 
 // A native call that surfaces a permission's real dialog. It must resolve **only** once the
@@ -33,7 +32,7 @@ const acquirePermission = async (
 	trigger: PermissionTrigger,
 	{ signal, timeout }: GetPermissionOptions = {}
 ): Promise<'granted'> => {
-	if (!isNavigatorPermissionsSupported()) {
+	if (!navigator.permissions) {
 		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
 	}
 

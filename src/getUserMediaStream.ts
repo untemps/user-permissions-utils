@@ -1,6 +1,3 @@
-import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
-import isNavigatorMediaDevicesSupported from './isNavigatorMediaDevicesSupported'
-
 export interface GetUserMediaStreamOptions {
 	signal?: AbortSignal
 }
@@ -17,7 +14,7 @@ const getUserMediaStream = async (
 	mediaStreamConstraints: MediaStreamConstraints,
 	{ signal }: GetUserMediaStreamOptions = {}
 ): Promise<MediaStream> => {
-	if (!isNavigatorPermissionsSupported() || !isNavigatorMediaDevicesSupported()) {
+	if (!navigator.permissions || !navigator.mediaDevices) {
 		throw new DOMException(
 			'Navigator API: permissions or Navigator API: mediaDevices not supported',
 			'NOT_SUPPORTED_ERR'
