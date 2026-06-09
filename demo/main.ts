@@ -21,14 +21,20 @@ type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 interface PermissionEntry {
 	name: string
 	getter: PermissionGetter
-	// Surfaces the real browser prompt (on the click gesture) so the passive watcher can settle
-	// instead of timing out. `push` has no practical in-page trigger and is left without one.
-	trigger?: () => void
+	// Fires the real browser API to surface the prompt, resolving when the user/UA has responded.
+	// `push` has no practical in-page trigger and is left without one.
+	trigger?: () => Promise<unknown>
 }
 
 interface ApiSupport {
 	label: string
 	supported: () => boolean
+}
+
+type OutcomeKind = 'granted' | 'denied' | 'prompt' | 'timeout' | 'aborted' | 'error'
+interface Outcome {
+	kind: OutcomeKind
+	detail?: string
 }
 
 let activeController: AbortController | null = null
@@ -62,6 +68,16 @@ const APIS: ApiSupport[] = [
 	{ label: 'Storage Access', supported: () => 'requestStorageAccess' in document },
 	{ label: 'Clipboard', supported: () => 'clipboard' in navigator },
 ]
+
+// Friendly copy for the DOMException names the flow can surface, so logs read in plain language
+// instead of raw codes like "NOT_ALLOWED_ERR".
+const FRIENDLY_ERRORS: Record<string, string> = {
+	NotSupportedError: 'not supported in this browser',
+	NOT_SUPPORTED_ERR: 'not supported in this browser',
+	SecurityError: 'blocked by the browser',
+	TypeError: 'not queryable in this browser',
+	InvalidStateError: 'needs a trigger to settle',
+}
 
 const GETTER_TIMEOUT = 20000
 const STATE_DOT_CLASS: Record<string, string> = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
@@ -121,7 +137,7 @@ async function watchPermissionState(name: string): Promise<void> {
 	} catch (err) {
 		const error = err as DOMException
 		renderPermissionState(name, 'error')
-		log(`checkPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
+		log(`checkPermission("${name}") ✗ ${friendlyError(error)}`, 'error')
 	}
 }
 
@@ -151,25 +167,90 @@ async function handleGetPermission(entry: PermissionEntry): Promise<void> {
 
 	const resultId = `getter-result-${entry.name}`
 	setResult(resultId, 'watching…', 'pending')
-	log(`getPermission("${entry.name}") →`, 'pending')
+	log(`getPermission("${entry.name}") → watching…`, 'pending')
 
-	// Passive watcher: it never surfaces a dialog itself, so fire the matching real API to prompt.
-	const watcher = entry.getter({ signal: controller.signal, timeout: GETTER_TIMEOUT })
-	entry.trigger?.()
-
-	try {
-		const state = await watcher
-		setResult(resultId, `→ ${state}`, 'success')
-		log(`getPermission("${entry.name}") → ${state}`, 'success')
-	} catch (err) {
-		const error = err as DOMException
-		// Abort and timeout are expected user-driven outcomes, not failures.
-		const settled = error.name === 'AbortError' || error.name === 'TimeoutError'
-		setResult(resultId, `→ ${error.name}`, settled ? 'warning' : 'error')
-		log(`getPermission("${entry.name}") ✗ ${error.name}: ${error.message}`, settled ? 'warning' : 'error')
-	} finally {
-		if (activeController === controller) activeController = null
+	// Race the library's passive watcher (resolves on the Permissions `change` event) against the
+	// real browser API: firing it surfaces the prompt, and once it settles we re-read the state
+	// with checkPermission — so the watch resolves even when no `change` event ever arrives.
+	const races: Promise<Outcome>[] = [watchOutcome(entry, controller.signal)]
+	if (entry.trigger) {
+		races.push(triggerOutcome(entry))
 	}
+
+	const outcome = await Promise.race(races)
+
+	// Tear down the losing watcher (clears its timeout/listener) and release the slot.
+	controller.abort()
+	if (activeController === controller) {
+		activeController = null
+	}
+
+	const { text, type } = describeOutcome(entry, outcome)
+	setResult(resultId, `→ ${text}`, type)
+	log(`getPermission("${entry.name}") → ${text}`, type)
+}
+
+// The library watcher: resolves with 'granted', or maps its rejection to a friendly outcome.
+async function watchOutcome(entry: PermissionEntry, signal: AbortSignal): Promise<Outcome> {
+	try {
+		await entry.getter({ signal, timeout: GETTER_TIMEOUT })
+		return { kind: 'granted' }
+	} catch (err) {
+		return errorToOutcome(err as DOMException)
+	}
+}
+
+// The trigger path: fire the real API, then read the resulting state with checkPermission.
+async function triggerOutcome(entry: PermissionEntry): Promise<Outcome> {
+	try {
+		await entry.trigger?.()
+	} catch {
+		// The trigger rejects on denial/blocking; the checkPermission read below reflects the state.
+	}
+	try {
+		const state = await checkPermission(entry.name as PermissionName)
+		return { kind: state }
+	} catch (err) {
+		return errorToOutcome(err as DOMException)
+	}
+}
+
+function errorToOutcome(err: DOMException): Outcome {
+	switch (err.name) {
+		case 'NotAllowedError':
+		case 'NOT_ALLOWED_ERR':
+			return { kind: 'denied' }
+		case 'TimeoutError':
+			return { kind: 'timeout' }
+		case 'AbortError':
+			return { kind: 'aborted' }
+		default:
+			return { kind: 'error', detail: friendlyError(err) }
+	}
+}
+
+function describeOutcome(entry: PermissionEntry, outcome: Outcome): { text: string; type: string } {
+	switch (outcome.kind) {
+		case 'granted':
+			return { text: 'granted', type: 'success' }
+		case 'denied':
+			return { text: 'denied', type: 'warning' }
+		case 'prompt':
+			return { text: 'dismissed — no choice made', type: 'warning' }
+		case 'timeout':
+			return {
+				text: entry.trigger ? 'timed out — no response' : 'no in-page trigger — timed out',
+				type: 'warning',
+			}
+		case 'aborted':
+			return { text: 'cancelled', type: 'warning' }
+		case 'error':
+			return { text: outcome.detail ?? 'unavailable', type: 'error' }
+	}
+}
+
+function friendlyError(err: DOMException): string {
+	return FRIENDLY_ERRORS[err.name] ?? err.message ?? err.name
 }
 
 function handleAbort(): void {
@@ -181,56 +262,63 @@ function handleAbort(): void {
 	}
 }
 
-function triggerUserMedia(constraints: MediaStreamConstraints): void {
-	void navigator.mediaDevices
-		?.getUserMedia(constraints)
-		.then((stream) => stream.getTracks().forEach((track) => track.stop()))
-		.catch(noop)
+function triggerUserMedia(constraints: MediaStreamConstraints): Promise<void> {
+	const media = navigator.mediaDevices?.getUserMedia(constraints)
+	if (!media) {
+		return Promise.resolve()
+	}
+	return media.then((stream) => stream.getTracks().forEach((track) => track.stop()))
 }
 
-function triggerGeolocation(): void {
-	navigator.geolocation?.getCurrentPosition(noop, noop)
+function triggerGeolocation(): Promise<void> {
+	return new Promise((resolve) => {
+		if (!('geolocation' in navigator)) {
+			resolve()
+			return
+		}
+		navigator.geolocation.getCurrentPosition(
+			() => resolve(),
+			() => resolve()
+		)
+	})
 }
 
-function triggerNotifications(): void {
-	if ('Notification' in window) void Notification.requestPermission()
+function triggerNotifications(): Promise<unknown> {
+	return 'Notification' in window ? Notification.requestPermission() : Promise.resolve()
 }
 
-function triggerMidi(): void {
-	void navigator.requestMIDIAccess?.({ sysex: true }).catch(noop)
+function triggerMidi(): Promise<unknown> {
+	return navigator.requestMIDIAccess?.({ sysex: true }) ?? Promise.resolve()
 }
 
-function triggerPersistentStorage(): void {
-	void navigator.storage?.persist?.().catch(noop)
+function triggerPersistentStorage(): Promise<unknown> {
+	return navigator.storage?.persist?.() ?? Promise.resolve()
 }
 
-function triggerWakeLock(): void {
-	void navigator.wakeLock
-		?.request('screen')
-		.then((lock) => lock.release())
-		.catch(noop)
+function triggerWakeLock(): Promise<unknown> {
+	const lock = navigator.wakeLock?.request('screen')
+	if (!lock) {
+		return Promise.resolve()
+	}
+	return lock.then((sentinel) => sentinel.release())
 }
 
-function triggerStorageAccess(): void {
-	void document.requestStorageAccess?.().catch(noop)
+function triggerStorageAccess(): Promise<unknown> {
+	return document.requestStorageAccess?.() ?? Promise.resolve()
 }
 
-function triggerClipboardRead(): void {
-	void navigator.clipboard?.read?.().catch(noop)
+function triggerClipboardRead(): Promise<unknown> {
+	return navigator.clipboard?.read?.() ?? Promise.resolve()
 }
 
-function triggerClipboardWrite(): void {
-	void navigator.clipboard?.writeText?.('').catch(noop)
+function triggerClipboardWrite(): Promise<unknown> {
+	return navigator.clipboard?.writeText?.('') ?? Promise.resolve()
 }
 
 function setResult(id: string, text: string, type: string): void {
 	const el = document.getElementById(id)!
 	el.textContent = text
 	el.className = `result result--${type}`
-}
-
-function noop(): void {
-	// Intentionally empty: used where a callback is required but its result is irrelevant.
 }
 
 function log(message: string, type = ''): void {

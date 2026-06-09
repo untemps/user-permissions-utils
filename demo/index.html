@@ -282,11 +282,12 @@
 						<button id="abort-btn" class="danger">abort</button>
 					</div>
 					<p class="note">
-						Each button calls the matching <code>get…Permission({ signal, timeout })</code> wrapper — a
-						passive watcher that resolves with 'granted' and rejects on 'denied' — while firing the real
-						browser API that surfaces the prompt, so the watch actually settles. <code>abort</code> cancels
-						the pending watch; a watch left unanswered times out after 20s. <code>push</code> has no in-page
-						trigger and resolves only if already granted/denied.
+						Each button watches the permission with <code>get…Permission({ signal, timeout })</code> and
+						fires the matching browser API to surface the prompt. Whichever settles first wins — the
+						<code>change</code> event, or the API result re-read with <code>checkPermission</code> — so the
+						result always shows the real outcome (granted, denied, dismissed, or a friendly error) instead
+						of timing out. <code>abort</code> cancels the pending watch; <code>push</code> has no in-page
+						trigger.
 					</p>
 				</div>
 			</div>
