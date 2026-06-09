@@ -1,7 +1,6 @@
 import {
 	isNavigatorPermissionsSupported,
 	isNavigatorMediaDevicesSupported,
-	getUserMediaStream,
 	getCameraPermission,
 	getClipboardReadPermission,
 	getClipboardWritePermission,
@@ -22,60 +21,73 @@ type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 interface PermissionEntry {
 	name: string
 	getter: PermissionGetter
-	// Optional in-page action that surfaces the real prompt so a passive watcher can settle.
+	// Surfaces the real browser prompt (on the click gesture) so the passive watcher can settle
+	// instead of timing out. `push` has no practical in-page trigger and is left without one.
 	trigger?: () => void
 }
 
-let activeController: AbortController | null = null
-let activeStream: MediaStream | null = null
+interface ApiSupport {
+	label: string
+	supported: () => boolean
+}
 
-// Every permission the library exposes through a dedicated getter. `name` doubles as the
-// Permissions API query name; `clipboard-read`/`clipboard-write` are valid at runtime but
-// outside the DOM `PermissionName` type, hence the assertions at the call sites below.
+let activeController: AbortController | null = null
+
+// Every permission the library exposes through a dedicated getter, paired with the browser API
+// that actually prompts for it. `name` doubles as the Permissions API query name.
 const PERMISSIONS: PermissionEntry[] = [
-	{ name: 'camera', getter: getCameraPermission },
-	{ name: 'microphone', getter: getMicrophonePermission },
+	{ name: 'camera', getter: getCameraPermission, trigger: () => triggerUserMedia({ video: true }) },
+	{ name: 'microphone', getter: getMicrophonePermission, trigger: () => triggerUserMedia({ audio: true }) },
 	{ name: 'geolocation', getter: getGeolocationPermission, trigger: triggerGeolocation },
 	{ name: 'notifications', getter: getNotificationsPermission, trigger: triggerNotifications },
-	{ name: 'midi', getter: getMidiPermission },
+	{ name: 'midi', getter: getMidiPermission, trigger: triggerMidi },
 	{ name: 'push', getter: getPushPermission },
-	{ name: 'persistent-storage', getter: getPersistentStoragePermission },
-	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission },
-	{ name: 'storage-access', getter: getStorageAccessPermission },
-	{ name: 'clipboard-read', getter: getClipboardReadPermission },
-	{ name: 'clipboard-write', getter: getClipboardWritePermission },
+	{ name: 'persistent-storage', getter: getPersistentStoragePermission, trigger: triggerPersistentStorage },
+	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission, trigger: triggerWakeLock },
+	{ name: 'storage-access', getter: getStorageAccessPermission, trigger: triggerStorageAccess },
+	{ name: 'clipboard-read', getter: getClipboardReadPermission, trigger: triggerClipboardRead },
+	{ name: 'clipboard-write', getter: getClipboardWritePermission, trigger: triggerClipboardWrite },
 ]
 
-const GETTER_TIMEOUT = 10000
+// Every browser API the demo relies on to surface a prompt — shown in the API Support card.
+const APIS: ApiSupport[] = [
+	{ label: 'Permissions', supported: isNavigatorPermissionsSupported },
+	{ label: 'MediaDevices', supported: isNavigatorMediaDevicesSupported },
+	{ label: 'Geolocation', supported: () => 'geolocation' in navigator },
+	{ label: 'Notifications', supported: () => 'Notification' in window },
+	{ label: 'Web MIDI', supported: () => 'requestMIDIAccess' in navigator },
+	{ label: 'Push', supported: () => 'PushManager' in window },
+	{ label: 'Storage Manager', supported: () => 'storage' in navigator },
+	{ label: 'Screen Wake Lock', supported: () => 'wakeLock' in navigator },
+	{ label: 'Storage Access', supported: () => 'requestStorageAccess' in document },
+	{ label: 'Clipboard', supported: () => 'clipboard' in navigator },
+]
+
+const GETTER_TIMEOUT = 20000
 const STATE_DOT_CLASS: Record<string, string> = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
 const STATE_LOG_TYPE: Record<string, string> = { granted: 'success', denied: 'warning', prompt: '' }
 const logEl = document.getElementById('log')!
 
 document.addEventListener('DOMContentLoaded', () => {
-	initSupportStatus()
+	initSupportStatus(APIS)
 	initPermissionStates(PERMISSIONS)
 	initDedicatedGetters(PERMISSIONS)
-
-	document.querySelectorAll<HTMLElement>('[data-action="getUserMediaStream"]').forEach((btn) => {
-		btn.addEventListener('click', () =>
-			handleGetUserMediaStream(btn.dataset.permission as PermissionName, JSON.parse(btn.dataset.constraints!))
-		)
-	})
 
 	document.getElementById('abort-btn')!.addEventListener('click', handleAbort)
 })
 
-function initSupportStatus(): void {
-	const permissionsOk = isNavigatorPermissionsSupported()
-	const mediaDevicesOk = isNavigatorMediaDevicesSupported()
-
-	setSupport('permissions', permissionsOk)
-	setSupport('mediadevices', mediaDevicesOk)
-}
-
-function setSupport(key: string, ok: boolean): void {
-	document.getElementById(`dot-${key}`)!.classList.add(ok ? 'supported' : 'unsupported')
-	document.getElementById(`${key}-support`)!.textContent = ok ? 'supported' : 'not supported'
+function initSupportStatus(apis: ApiSupport[]): void {
+	const container = document.getElementById('api-support')!
+	apis.forEach((api) => {
+		const ok = api.supported()
+		const row = document.createElement('div')
+		row.className = 'support-row'
+		row.innerHTML =
+			`<div class="dot ${ok ? 'supported' : 'unsupported'}"></div>` +
+			`<span class="support-label">${api.label}</span>` +
+			`<span class="support-value">${ok ? 'supported' : 'not supported'}</span>`
+		container.append(row)
+	})
 }
 
 function initPermissionStates(entries: PermissionEntry[]): void {
@@ -132,13 +144,17 @@ function initDedicatedGetters(entries: PermissionEntry[]): void {
 }
 
 async function handleGetPermission(entry: PermissionEntry): Promise<void> {
+	// A new watch supersedes any pending one; the Abort button cancels the current watch.
+	activeController?.abort()
+	const controller = new AbortController()
+	activeController = controller
+
 	const resultId = `getter-result-${entry.name}`
 	setResult(resultId, 'watching…', 'pending')
-	log(`getPermission("${entry.name}") [dedicated, ${GETTER_TIMEOUT}ms] →`, 'pending')
+	log(`getPermission("${entry.name}") →`, 'pending')
 
-	// Passive watcher: resolves once the permission becomes 'granted'. It never surfaces a dialog
-	// on its own, so we fire the matching in-page trigger (when one exists) to settle the wait.
-	const watcher = entry.getter({ timeout: GETTER_TIMEOUT })
+	// Passive watcher: it never surfaces a dialog itself, so fire the matching real API to prompt.
+	const watcher = entry.getter({ signal: controller.signal, timeout: GETTER_TIMEOUT })
 	entry.trigger?.()
 
 	try {
@@ -147,76 +163,64 @@ async function handleGetPermission(entry: PermissionEntry): Promise<void> {
 		log(`getPermission("${entry.name}") → ${state}`, 'success')
 	} catch (err) {
 		const error = err as DOMException
-		const type = error.name === 'TimeoutError' ? 'warning' : 'error'
-		setResult(resultId, `→ ${error.name}`, type)
-		log(`getPermission("${entry.name}") ✗ ${error.name}: ${error.message}`, type)
-	}
-}
-
-function triggerNotifications(): void {
-	if (typeof Notification !== 'undefined') {
-		void Notification.requestPermission()
-	} else {
-		log('Notification API not supported — watcher will time out', 'warning')
-	}
-}
-
-function triggerGeolocation(): void {
-	if (navigator.geolocation) {
-		navigator.geolocation.getCurrentPosition(noop, noop)
-	} else {
-		log('Geolocation API not supported — watcher will time out', 'warning')
-	}
-}
-
-async function handleGetUserMediaStream(
-	permissionName: PermissionName,
-	constraints: MediaStreamConstraints
-): Promise<void> {
-	stopActiveStream()
-	activeController = new AbortController()
-
-	setResult('stream-result', `acquiring ${permissionName} stream…`, 'pending')
-	log(`getUserMediaStream("${permissionName}") →`, 'pending')
-
-	try {
-		activeStream = await getUserMediaStream(permissionName, constraints, { signal: activeController.signal })
-
-		const tracks = activeStream.getTracks()
-		const kind = tracks[0]?.kind ?? 'unknown'
-		const label = `MediaStream — ${tracks.length} ${kind} track${tracks.length !== 1 ? 's' : ''} (id: ${activeStream.id.slice(0, 8)}…)`
-
-		setResult('stream-result', `→ ${label}`, 'success')
-		log(`getUserMediaStream("${permissionName}") → ${label}`, 'success')
-	} catch (err) {
-		const error = err as DOMException
-		if (error.name === 'AbortError') {
-			setResult('stream-result', '→ aborted', 'warning')
-			log(`getUserMediaStream("${permissionName}") — aborted`, 'warning')
-		} else {
-			setResult('stream-result', `→ ${error.name}: ${error.message}`, 'error')
-			log(`getUserMediaStream("${permissionName}") ✗ ${error.name}: ${error.message}`, 'error')
-		}
+		// Abort and timeout are expected user-driven outcomes, not failures.
+		const settled = error.name === 'AbortError' || error.name === 'TimeoutError'
+		setResult(resultId, `→ ${error.name}`, settled ? 'warning' : 'error')
+		log(`getPermission("${entry.name}") ✗ ${error.name}: ${error.message}`, settled ? 'warning' : 'error')
 	} finally {
-		activeController = null
+		if (activeController === controller) activeController = null
 	}
 }
 
 function handleAbort(): void {
 	if (activeController) {
 		activeController.abort()
+		log('abort — cancelled the pending permission watch', 'warning')
 	} else {
-		stopActiveStream()
-		setResult('stream-result', '→ no active stream', 'pending')
 		log('abort — no active operation', 'warning')
 	}
 }
 
-function stopActiveStream(): void {
-	if (activeStream) {
-		activeStream.getTracks().forEach((t) => t.stop())
-		activeStream = null
-	}
+function triggerUserMedia(constraints: MediaStreamConstraints): void {
+	void navigator.mediaDevices
+		?.getUserMedia(constraints)
+		.then((stream) => stream.getTracks().forEach((track) => track.stop()))
+		.catch(noop)
+}
+
+function triggerGeolocation(): void {
+	navigator.geolocation?.getCurrentPosition(noop, noop)
+}
+
+function triggerNotifications(): void {
+	if ('Notification' in window) void Notification.requestPermission()
+}
+
+function triggerMidi(): void {
+	void navigator.requestMIDIAccess?.({ sysex: true }).catch(noop)
+}
+
+function triggerPersistentStorage(): void {
+	void navigator.storage?.persist?.().catch(noop)
+}
+
+function triggerWakeLock(): void {
+	void navigator.wakeLock
+		?.request('screen')
+		.then((lock) => lock.release())
+		.catch(noop)
+}
+
+function triggerStorageAccess(): void {
+	void document.requestStorageAccess?.().catch(noop)
+}
+
+function triggerClipboardRead(): void {
+	void navigator.clipboard?.read?.().catch(noop)
+}
+
+function triggerClipboardWrite(): void {
+	void navigator.clipboard?.writeText?.('').catch(noop)
 }
 
 function setResult(id: string, text: string, type: string): void {

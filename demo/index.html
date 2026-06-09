@@ -255,16 +255,7 @@
 			<div class="card">
 				<div class="card-header">API Support</div>
 				<div class="card-body">
-					<div class="support-row">
-						<div class="dot" id="dot-permissions"></div>
-						<span class="support-label">Permissions API</span>
-						<span class="support-value" id="permissions-support">—</span>
-					</div>
-					<div class="support-row">
-						<div class="dot" id="dot-mediadevices"></div>
-						<span class="support-label">MediaDevices API</span>
-						<span class="support-value" id="mediadevices-support">—</span>
-					</div>
+					<div id="api-support" class="stack"></div>
 				</div>
 			</div>
 
@@ -282,45 +273,20 @@
 				</div>
 			</div>
 
-			<!-- getUserMediaStream -->
-			<div class="card">
-				<div class="card-header">getUserMediaStream</div>
-				<div class="card-body">
-					<div class="btn-row">
-						<button
-							data-action="getUserMediaStream"
-							data-permission="microphone"
-							data-constraints='{"audio":true}'
-						>
-							microphone
-						</button>
-						<button
-							data-action="getUserMediaStream"
-							data-permission="camera"
-							data-constraints='{"video":true}'
-						>
-							camera
-						</button>
-						<button id="abort-btn" class="danger">abort</button>
-					</div>
-					<div class="result" id="stream-result"></div>
-				</div>
-			</div>
-
 			<!-- Dedicated permission getters -->
 			<div class="card">
 				<div class="card-header">Dedicated permission getters</div>
 				<div class="card-body">
 					<div id="getter-rows" class="stack"></div>
+					<div class="btn-row">
+						<button id="abort-btn" class="danger">abort</button>
+					</div>
 					<p class="note">
-						Each button calls the matching <code>get…Permission({ timeout })</code> wrapper — a passive
-						watcher that resolves with 'granted', rejects on 'denied', and otherwise waits (bounded by the
-						10s timeout) for the real prompt. <code>geolocation</code> and
-						<code>notifications</code> trigger their dialog in-page; <code>camera</code>/<code
-							>microphone</code
-						>
-						can be triggered via the getUserMediaStream card above; the others resolve immediately when
-						already granted/denied, otherwise they time out.
+						Each button calls the matching <code>get…Permission({ signal, timeout })</code> wrapper — a
+						passive watcher that resolves with 'granted' and rejects on 'denied' — while firing the real
+						browser API that surfaces the prompt, so the watch actually settles. <code>abort</code> cancels
+						the pending watch; a watch left unanswered times out after 20s. <code>push</code> has no in-page
+						trigger and resolves only if already granted/denied.
 					</p>
 				</div>
 			</div>
