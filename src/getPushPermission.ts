@@ -3,8 +3,11 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
 /**
  * Watches the `push` permission and resolves with `'granted'` once it is granted.
  *
- * Thin wrapper around {@link getPermission} with the permission name hardcoded — see
- * `getPermission` for the full passive-watcher contract (bounded wait on `'prompt'`).
+ * **Passive watcher** (thin wrapper around {@link getPermission}): unlike the active getters, it
+ * never surfaces a dialog, because acquiring `push` requires consumer-owned infrastructure the
+ * library cannot synthesize from a permission name (a registered service worker and a VAPID key).
+ * Trigger the prompt yourself via `pushManager.subscribe(...)`; this only observes the state, so
+ * the **bounded-wait** requirement on `'prompt'` applies (pass `signal` and/or `timeout`).
  *
  * @param options           Optional settings forwarded to `getPermission`
  * @param options.signal    Optional AbortSignal to cancel the pending wait

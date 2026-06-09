@@ -1,17 +1,21 @@
-import getPermission, { type GetPermissionOptions } from './getPermission'
+import acquirePermission from './_acquirePermission'
+import { storageAccessTrigger } from './_triggers'
+import type { GetPermissionOptions } from './getPermission'
 
 /**
- * Watches the `storage-access` permission and resolves with `'granted'` once it is granted.
+ * Acquires the `storage-access` permission: reads the current state and, on `'prompt'`, requests it
+ * (via `document.requestStorageAccess`), resolving with `'granted'` once it is granted.
  *
- * Thin wrapper around {@link getPermission} with the permission name hardcoded — see
- * `getPermission` for the full passive-watcher contract (bounded wait on `'prompt'`).
+ * Active counterpart to {@link getPermission} — see {@link acquirePermission} for the full
+ * query-then-trigger contract. Only meaningful inside a cross-site iframe and must be called from a
+ * user gesture, so it works only in that context.
  *
- * @param options           Optional settings forwarded to `getPermission`
- * @param options.signal    Optional AbortSignal to cancel the pending wait
+ * @param options           Optional settings forwarded to the acquisition
+ * @param options.signal    Optional AbortSignal to cancel the pending acquisition
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
 const getStorageAccessPermission = (options?: GetPermissionOptions): Promise<'granted'> =>
-	getPermission('storage-access', options)
+	acquirePermission('storage-access', storageAccessTrigger, options)
 
 export default getStorageAccessPermission

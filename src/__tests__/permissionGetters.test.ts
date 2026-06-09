@@ -20,22 +20,29 @@ import {
 
 type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 
-// Each dedicated getter is a one-line wrapper around `getPermission` with a single hardcoded
-// permission name. Rather than one near-identical test file per wrapper (the repo's usual 1:1
-// source-to-test convention), a single parametrized suite drives every getter through the same
-// table, so the shared contract is asserted once and identically for all of them.
-const getters: ReadonlyArray<{ label: string; getter: PermissionGetter; name: string }> = [
+// Every dedicated getter is a one-line wrapper: the active ones over `acquirePermission` (with a
+// hardcoded name + native trigger), the passive ones over `getPermission`. Rather than one
+// near-identical test file per wrapper (the repo's usual 1:1 convention), a single parametrized
+// suite drives every getter through the contract they all share — guard, `'granted'` short-circuit
+// and options forwarding — leaving the active trigger/acquire mechanics to `_acquirePermission` and
+// `_triggers` tests. The `passive` flag marks the three getters that intentionally never prompt.
+const getters: ReadonlyArray<{ label: string; getter: PermissionGetter; name: string; passive?: true }> = [
 	{ label: 'getCameraPermission', getter: getCameraPermission, name: 'camera' },
-	{ label: 'getClipboardReadPermission', getter: getClipboardReadPermission, name: 'clipboard-read' },
-	{ label: 'getClipboardWritePermission', getter: getClipboardWritePermission, name: 'clipboard-write' },
-	{ label: 'getGeolocationPermission', getter: getGeolocationPermission, name: 'geolocation' },
 	{ label: 'getMicrophonePermission', getter: getMicrophonePermission, name: 'microphone' },
-	{ label: 'getMidiPermission', getter: getMidiPermission, name: 'midi' },
+	{ label: 'getGeolocationPermission', getter: getGeolocationPermission, name: 'geolocation' },
 	{ label: 'getNotificationsPermission', getter: getNotificationsPermission, name: 'notifications' },
+	{ label: 'getMidiPermission', getter: getMidiPermission, name: 'midi' },
 	{ label: 'getPersistentStoragePermission', getter: getPersistentStoragePermission, name: 'persistent-storage' },
-	{ label: 'getPushPermission', getter: getPushPermission, name: 'push' },
 	{ label: 'getScreenWakeLockPermission', getter: getScreenWakeLockPermission, name: 'screen-wake-lock' },
 	{ label: 'getStorageAccessPermission', getter: getStorageAccessPermission, name: 'storage-access' },
+	{ label: 'getPushPermission', getter: getPushPermission, name: 'push', passive: true },
+	{ label: 'getClipboardReadPermission', getter: getClipboardReadPermission, name: 'clipboard-read', passive: true },
+	{
+		label: 'getClipboardWritePermission',
+		getter: getClipboardWritePermission,
+		name: 'clipboard-write',
+		passive: true,
+	},
 ]
 
 describe('dedicated permission getters', () => {
@@ -58,6 +65,8 @@ describe('dedicated permission getters', () => {
 		beforeEach(() => mockPermissionsQuery.mockReset())
 		afterAll(teardownPermissionsMock)
 
+		// On an already-`'granted'` state both kinds short-circuit to `'granted'` without ever firing
+		// a trigger, so this asserts the hardcoded name for all eleven without mocking native APIs.
 		it.each(getters)('$label queries "$name" and resolves with "granted"', async ({ getter, name }) => {
 			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'granted'
@@ -68,12 +77,12 @@ describe('dedicated permission getters', () => {
 		})
 
 		describe('options forwarding', () => {
-			// Parametrized over every getter: an already-aborted signal makes getPermission bail out
-			// (`signal?.throwIfAborted()`) before it ever queries — but only if `options` was actually
-			// forwarded. This proves the pass-through for all 11 wrappers, which neither the name-only
-			// assertion above nor line coverage can: a wrapper that dropped `options` would instead
-			// query and never reject with `AbortError` here.
-			it.each(getters)('$label forwards the signal to getPermission', async ({ getter }) => {
+			// Parametrized over every getter: an already-aborted signal makes both `acquirePermission`
+			// and `getPermission` bail out (`signal?.throwIfAborted()`) before they ever query — but
+			// only if `options` was actually forwarded. This proves the pass-through for all eleven
+			// wrappers, which neither the name-only assertion above nor line coverage can: a wrapper
+			// that dropped `options` would instead query and never reject with `AbortError` here.
+			it.each(getters)('$label forwards the signal', async ({ getter }) => {
 				const controller = new AbortController()
 				controller.abort()
 
@@ -83,14 +92,17 @@ describe('dedicated permission getters', () => {
 				expect(mockPermissionsQuery).not.toHaveBeenCalled()
 			})
 
-			it('forwards the timeout to getPermission (prompt state rejects with TimeoutError)', async () => {
+			// The passive getters delegate straight to `getPermission`, whose `'prompt'` wait is bounded
+			// by `timeout` — so the timeout must reach it. (Active getters time out around their trigger;
+			// that path is covered in `_acquirePermission`.)
+			it('forwards the timeout to the passive getters (prompt state rejects with TimeoutError)', async () => {
 				vi.useFakeTimers()
 				try {
 					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'prompt'
 					mockPermissionsQuery.mockResolvedValueOnce(status)
 
-					const promise = getCameraPermission({ timeout: 1000 })
+					const promise = getPushPermission({ timeout: 1000 })
 					const expectation = expect(promise).rejects.toMatchObject({ name: 'TimeoutError' })
 					await vi.advanceTimersByTimeAsync(1000)
 					await expectation
