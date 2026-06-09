@@ -243,6 +243,38 @@
 				padding: 0;
 				min-height: 0;
 			}
+
+			details.card > summary.card-header {
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				list-style: none;
+				user-select: none;
+			}
+
+			details.card > summary.card-header::-webkit-details-marker {
+				display: none;
+			}
+
+			details.card > summary.card-header::after {
+				content: '▸';
+				font-size: 10px;
+				color: var(--muted);
+				transition: transform 120ms;
+			}
+
+			details.card[open] > summary.card-header::after {
+				transform: rotate(90deg);
+			}
+
+			details.card:not([open]) > summary.card-header {
+				border-bottom: none;
+			}
+
+			details.card > summary.card-header:hover {
+				color: var(--text);
+			}
 		</style>
 	</head>
 	<body>
@@ -252,16 +284,16 @@
 			</header>
 
 			<!-- API Support -->
-			<div class="card">
-				<div class="card-header">API Support</div>
+			<details class="card" open>
+				<summary class="card-header">API Support</summary>
 				<div class="card-body">
 					<div id="api-support" class="stack"></div>
 				</div>
-			</div>
+			</details>
 
-			<!-- checkPermission -->
-			<div class="card">
-				<div class="card-header">checkPermission</div>
+			<!-- check permission -->
+			<details class="card" open>
+				<summary class="card-header">check permission</summary>
 				<div class="card-body">
 					<div id="permission-states" class="stack"></div>
 					<p class="note">
@@ -271,7 +303,7 @@
 						→ reset permissions.
 					</p>
 				</div>
-			</div>
+			</details>
 
 			<!-- Dedicated permission getters -->
 			<div class="card">
