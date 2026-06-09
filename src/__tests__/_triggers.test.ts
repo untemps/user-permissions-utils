@@ -111,12 +111,12 @@ describe('permission triggers', () => {
 	})
 
 	describe('midiTrigger', () => {
-		it('resolves when MIDI access is granted, requesting sysex', async () => {
+		it('resolves when MIDI access is granted, requesting only basic (non-sysex) access', async () => {
 			const requestMIDIAccess = vi.fn(() => Promise.resolve({} as MIDIAccess))
 			stub(navigator, 'requestMIDIAccess', requestMIDIAccess)
 
 			await expect(midiTrigger()).resolves.toBeUndefined()
-			expect(requestMIDIAccess).toHaveBeenCalledWith({ sysex: true })
+			expect(requestMIDIAccess).toHaveBeenCalledWith({ sysex: false })
 		})
 
 		it('propagates a rejection (denied)', async () => {

@@ -81,7 +81,7 @@ For permissions with a fixed name, dedicated wrappers spare you from typing (and
 | `getMicrophonePermission` | `'microphone'` | `getUserMediaStream` |
 | `getGeolocationPermission` | `'geolocation'` | `navigator.geolocation.getCurrentPosition` |
 | `getNotificationsPermission` | `'notifications'` | `Notification.requestPermission` |
-| `getMidiPermission` | `'midi'` | `navigator.requestMIDIAccess({ sysex: true })` |
+| `getMidiPermission` | `'midi'` | `navigator.requestMIDIAccess({ sysex: false })` |
 | `getPersistentStoragePermission` | `'persistent-storage'` | `navigator.storage.persist` |
 | `getScreenWakeLockPermission` | `'screen-wake-lock'` | `navigator.wakeLock.request('screen')` |
 | `getStorageAccessPermission` | `'storage-access'` | `document.requestStorageAccess` |

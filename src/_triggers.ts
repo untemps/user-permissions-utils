@@ -35,7 +35,10 @@ export const notificationsTrigger: PermissionTrigger = async () => {
 	}
 }
 
-export const midiTrigger: PermissionTrigger = () => navigator.requestMIDIAccess({ sysex: true }).then(() => undefined)
+// Request only the basic `midi` permission queried above (no sysex) — least privilege, never
+// escalating to the more sensitive sysex grant. Browsers that auto-grant non-sysex MIDI may
+// therefore resolve this without ever surfacing a dialog.
+export const midiTrigger: PermissionTrigger = () => navigator.requestMIDIAccess({ sysex: false }).then(() => undefined)
 
 export const persistentStorageTrigger: PermissionTrigger = async () => {
 	if (!(await navigator.storage.persist())) {
