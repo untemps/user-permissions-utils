@@ -221,6 +221,28 @@
 				color: var(--muted);
 				line-height: 1.5;
 			}
+
+			.stack {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+
+			.getter-row {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.getter-row button {
+				min-width: 176px;
+				text-align: left;
+			}
+
+			.getter-row .result {
+				padding: 0;
+				min-height: 0;
+			}
 		</style>
 	</head>
 	<body>
@@ -250,19 +272,12 @@
 			<div class="card">
 				<div class="card-header">checkPermission</div>
 				<div class="card-body">
-					<div class="support-row">
-						<div class="dot" id="dot-permission-microphone"></div>
-						<span class="support-label">microphone</span>
-						<span class="support-value" id="permission-microphone">—</span>
-					</div>
-					<div class="support-row">
-						<div class="dot" id="dot-permission-camera"></div>
-						<span class="support-label">camera</span>
-						<span class="support-value" id="permission-camera">—</span>
-					</div>
+					<div id="permission-states" class="stack"></div>
 					<p class="note">
-						To reset permissions to 'prompt', click the lock or info icon in the browser address bar → reset
-						permissions.
+						Current state of every permission the library exposes, read upfront via
+						<code>checkPermission</code> and kept live through the Permissions API <code>change</code>
+						event. To reset a permission to 'prompt', click the lock or info icon in the browser address bar
+						→ reset permissions.
 					</p>
 				</div>
 			</div>
@@ -292,19 +307,21 @@
 				</div>
 			</div>
 
-			<!-- getNotificationsPermission -->
+			<!-- Dedicated permission getters -->
 			<div class="card">
-				<div class="card-header">getNotificationsPermission</div>
+				<div class="card-header">Dedicated permission getters</div>
 				<div class="card-body">
-					<div class="btn-row">
-						<button id="notifications-btn">request notifications</button>
-					</div>
+					<div id="getter-rows" class="stack"></div>
 					<p class="note">
-						Starts <code>getNotificationsPermission</code> as a passive watcher (10s timeout) and triggers
-						the real browser dialog via <code>Notification.requestPermission()</code> so the watcher can
-						resolve once the permission becomes 'granted'.
+						Each button calls the matching <code>get…Permission({ timeout })</code> wrapper — a passive
+						watcher that resolves with 'granted', rejects on 'denied', and otherwise waits (bounded by the
+						10s timeout) for the real prompt. <code>geolocation</code> and
+						<code>notifications</code> trigger their dialog in-page; <code>camera</code>/<code
+							>microphone</code
+						>
+						can be triggered via the getUserMediaStream card above; the others resolve immediately when
+						already granted/denied, otherwise they time out.
 					</p>
-					<div class="result" id="notifications-result"></div>
 				</div>
 			</div>
 

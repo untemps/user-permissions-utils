@@ -2,21 +2,59 @@ import {
 	isNavigatorPermissionsSupported,
 	isNavigatorMediaDevicesSupported,
 	getUserMediaStream,
+	getCameraPermission,
+	getClipboardReadPermission,
+	getClipboardWritePermission,
+	getGeolocationPermission,
+	getMicrophonePermission,
+	getMidiPermission,
 	getNotificationsPermission,
+	getPersistentStoragePermission,
+	getPushPermission,
+	getScreenWakeLockPermission,
+	getStorageAccessPermission,
 	checkPermission,
+	type GetPermissionOptions,
 } from '../src/index'
+
+type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
+
+interface PermissionEntry {
+	name: string
+	getter: PermissionGetter
+	// Optional in-page action that surfaces the real prompt so a passive watcher can settle.
+	trigger?: () => void
+}
 
 let activeController: AbortController | null = null
 let activeStream: MediaStream | null = null
 
-const WATCHED_PERMISSIONS: PermissionName[] = ['microphone', 'camera']
+// Every permission the library exposes through a dedicated getter. `name` doubles as the
+// Permissions API query name; `clipboard-read`/`clipboard-write` are valid at runtime but
+// outside the DOM `PermissionName` type, hence the assertions at the call sites below.
+const PERMISSIONS: PermissionEntry[] = [
+	{ name: 'camera', getter: getCameraPermission },
+	{ name: 'microphone', getter: getMicrophonePermission },
+	{ name: 'geolocation', getter: getGeolocationPermission, trigger: triggerGeolocation },
+	{ name: 'notifications', getter: getNotificationsPermission, trigger: triggerNotifications },
+	{ name: 'midi', getter: getMidiPermission },
+	{ name: 'push', getter: getPushPermission },
+	{ name: 'persistent-storage', getter: getPersistentStoragePermission },
+	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission },
+	{ name: 'storage-access', getter: getStorageAccessPermission },
+	{ name: 'clipboard-read', getter: getClipboardReadPermission },
+	{ name: 'clipboard-write', getter: getClipboardWritePermission },
+]
+
+const GETTER_TIMEOUT = 10000
 const STATE_DOT_CLASS: Record<string, string> = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
 const STATE_LOG_TYPE: Record<string, string> = { granted: 'success', denied: 'warning', prompt: '' }
 const logEl = document.getElementById('log')!
 
 document.addEventListener('DOMContentLoaded', () => {
 	initSupportStatus()
-	initPermissionStates(WATCHED_PERMISSIONS)
+	initPermissionStates(PERMISSIONS)
+	initDedicatedGetters(PERMISSIONS)
 
 	document.querySelectorAll<HTMLElement>('[data-action="getUserMediaStream"]').forEach((btn) => {
 		btn.addEventListener('click', () =>
@@ -25,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
 	})
 
 	document.getElementById('abort-btn')!.addEventListener('click', handleAbort)
-	document.getElementById('notifications-btn')!.addEventListener('click', handleNotificationsPermission)
 })
 
 function initSupportStatus(): void {
@@ -41,33 +78,95 @@ function setSupport(key: string, ok: boolean): void {
 	document.getElementById(`${key}-support`)!.textContent = ok ? 'supported' : 'not supported'
 }
 
-function initPermissionStates(permissionNames: PermissionName[]): void {
-	permissionNames.forEach(async (name) => {
-		try {
-			// Read the current state upfront through the library guard — no prompt, no waiting
-			const state = await checkPermission(name)
-			renderPermissionState(name, state)
-			log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
+function initPermissionStates(entries: PermissionEntry[]): void {
+	const container = document.getElementById('permission-states')!
+	entries.forEach((entry) => {
+		const row = document.createElement('div')
+		row.className = 'support-row'
+		row.innerHTML =
+			`<div class="dot" id="dot-permission-${entry.name}"></div>` +
+			`<span class="support-label">${entry.name}</span>` +
+			`<span class="support-value" id="permission-${entry.name}">—</span>`
+		container.append(row)
 
-			// Subscribe to live changes (a capability checkPermission intentionally does not cover)
-			const status = await navigator.permissions.query({ name })
-			status.addEventListener('change', () => {
-				renderPermissionState(name, status.state)
-				log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
-			})
-		} catch (err) {
-			const error = err as DOMException
-			renderPermissionState(name, 'error')
-			log(`checkPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
-		}
+		watchPermissionState(entry.name)
 	})
+}
+
+async function watchPermissionState(name: string): Promise<void> {
+	try {
+		// Read the current state upfront through the library guard — no prompt, no waiting
+		const state = await checkPermission(name as PermissionName)
+		renderPermissionState(name, state)
+		log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
+
+		// Subscribe to live changes (a capability checkPermission intentionally does not cover)
+		const status = await navigator.permissions.query({ name: name as PermissionName })
+		status.addEventListener('change', () => {
+			renderPermissionState(name, status.state)
+			log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
+		})
+	} catch (err) {
+		const error = err as DOMException
+		renderPermissionState(name, 'error')
+		log(`checkPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
+	}
 }
 
 function renderPermissionState(name: string, state: PermissionState | 'error'): void {
 	const dot = document.getElementById(`dot-permission-${name}`)!
 	const label = document.getElementById(`permission-${name}`)!
-	dot.className = `dot ${STATE_DOT_CLASS[state]}`
+	dot.className = `dot ${state === 'error' ? 'unsupported' : (STATE_DOT_CLASS[state] ?? '')}`
 	label.textContent = state
+}
+
+function initDedicatedGetters(entries: PermissionEntry[]): void {
+	const container = document.getElementById('getter-rows')!
+	entries.forEach((entry) => {
+		const row = document.createElement('div')
+		row.className = 'getter-row'
+		row.innerHTML = `<button type="button">${entry.name}</button><span class="result" id="getter-result-${entry.name}">—</span>`
+		row.querySelector('button')!.addEventListener('click', () => handleGetPermission(entry))
+		container.append(row)
+	})
+}
+
+async function handleGetPermission(entry: PermissionEntry): Promise<void> {
+	const resultId = `getter-result-${entry.name}`
+	setResult(resultId, 'watching…', 'pending')
+	log(`getPermission("${entry.name}") [dedicated, ${GETTER_TIMEOUT}ms] →`, 'pending')
+
+	// Passive watcher: resolves once the permission becomes 'granted'. It never surfaces a dialog
+	// on its own, so we fire the matching in-page trigger (when one exists) to settle the wait.
+	const watcher = entry.getter({ timeout: GETTER_TIMEOUT })
+	entry.trigger?.()
+
+	try {
+		const state = await watcher
+		setResult(resultId, `→ ${state}`, 'success')
+		log(`getPermission("${entry.name}") → ${state}`, 'success')
+	} catch (err) {
+		const error = err as DOMException
+		const type = error.name === 'TimeoutError' ? 'warning' : 'error'
+		setResult(resultId, `→ ${error.name}`, type)
+		log(`getPermission("${entry.name}") ✗ ${error.name}: ${error.message}`, type)
+	}
+}
+
+function triggerNotifications(): void {
+	if (typeof Notification !== 'undefined') {
+		void Notification.requestPermission()
+	} else {
+		log('Notification API not supported — watcher will time out', 'warning')
+	}
+}
+
+function triggerGeolocation(): void {
+	if (navigator.geolocation) {
+		navigator.geolocation.getCurrentPosition(noop, noop)
+	} else {
+		log('Geolocation API not supported — watcher will time out', 'warning')
+	}
 }
 
 async function handleGetUserMediaStream(
@@ -103,32 +202,6 @@ async function handleGetUserMediaStream(
 	}
 }
 
-async function handleNotificationsPermission(): Promise<void> {
-	setResult('notifications-result', 'watching notifications permission…', 'pending')
-	log('getNotificationsPermission({ timeout: 10000 }) →', 'pending')
-
-	// Passive watcher: resolves once the permission becomes 'granted'. It never surfaces a dialog
-	// on its own, so we trigger the real prompt below to let its `change` event settle the wait.
-	const watcher = getNotificationsPermission({ timeout: 10000 })
-
-	if (typeof Notification !== 'undefined') {
-		void Notification.requestPermission()
-	} else {
-		log('Notification API not supported — watcher will time out', 'warning')
-	}
-
-	try {
-		const state = await watcher
-		setResult('notifications-result', `→ ${state}`, 'success')
-		log(`getNotificationsPermission → ${state}`, 'success')
-	} catch (err) {
-		const error = err as DOMException
-		const type = error.name === 'TimeoutError' ? 'warning' : 'error'
-		setResult('notifications-result', `→ ${error.name}: ${error.message}`, type)
-		log(`getNotificationsPermission ✗ ${error.name}: ${error.message}`, type)
-	}
-}
-
 function handleAbort(): void {
 	if (activeController) {
 		activeController.abort()
@@ -150,6 +223,10 @@ function setResult(id: string, text: string, type: string): void {
 	const el = document.getElementById(id)!
 	el.textContent = text
 	el.className = `result result--${type}`
+}
+
+function noop(): void {
+	// Intentionally empty: used where a callback is required but its result is irrelevant.
 }
 
 function log(message: string, type = ''): void {
