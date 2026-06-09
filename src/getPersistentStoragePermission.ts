@@ -11,7 +11,7 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
-const getPersistentStoragePermission = async (options?: GetPermissionOptions): Promise<'granted'> =>
+const getPersistentStoragePermission = (options?: GetPermissionOptions): Promise<'granted'> =>
 	getPermission('persistent-storage', options)
 
 export default getPersistentStoragePermission

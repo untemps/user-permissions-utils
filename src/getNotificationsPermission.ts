@@ -11,7 +11,7 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
-const getNotificationsPermission = async (options?: GetPermissionOptions): Promise<'granted'> =>
+const getNotificationsPermission = (options?: GetPermissionOptions): Promise<'granted'> =>
 	getPermission('notifications', options)
 
 export default getNotificationsPermission

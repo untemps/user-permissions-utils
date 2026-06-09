@@ -11,7 +11,6 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
-const getCameraPermission = async (options?: GetPermissionOptions): Promise<'granted'> =>
-	getPermission('camera', options)
+const getCameraPermission = (options?: GetPermissionOptions): Promise<'granted'> => getPermission('camera', options)
 
 export default getCameraPermission

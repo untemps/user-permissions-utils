@@ -20,8 +20,10 @@ import {
 
 type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 
-// Each dedicated getter wraps `getPermission` with a single hardcoded permission name. The
-// table drives a parametrized suite so every getter is exercised against the same contract.
+// Each dedicated getter is a one-line wrapper around `getPermission` with a single hardcoded
+// permission name. Rather than one near-identical test file per wrapper (the repo's usual 1:1
+// source-to-test convention), a single parametrized suite drives every getter through the same
+// table, so the shared contract is asserted once and identically for all of them.
 const getters: ReadonlyArray<{ label: string; getter: PermissionGetter; name: string }> = [
 	{ label: 'getCameraPermission', getter: getCameraPermission, name: 'camera' },
 	{ label: 'getClipboardReadPermission', getter: getClipboardReadPermission, name: 'clipboard-read' },

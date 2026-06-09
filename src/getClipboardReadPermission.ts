@@ -1,4 +1,4 @@
-import getPermission, { type GetPermissionOptions } from './getPermission'
+import getPermission, { asPermissionName, type GetPermissionOptions } from './getPermission'
 
 /**
  * Watches the `clipboard-read` permission and resolves with `'granted'` once it is granted.
@@ -11,9 +11,7 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
-const getClipboardReadPermission = async (options?: GetPermissionOptions): Promise<'granted'> =>
-	// `clipboard-read` is a valid permission name at runtime but is not (yet) part of the DOM
-	// lib's `PermissionName` union, so the literal is asserted to satisfy `getPermission`.
-	getPermission('clipboard-read' as PermissionName, options)
+const getClipboardReadPermission = (options?: GetPermissionOptions): Promise<'granted'> =>
+	getPermission(asPermissionName('clipboard-read'), options)
 
 export default getClipboardReadPermission

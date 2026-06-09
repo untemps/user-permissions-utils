@@ -11,7 +11,7 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
-const getGeolocationPermission = async (options?: GetPermissionOptions): Promise<'granted'> =>
+const getGeolocationPermission = (options?: GetPermissionOptions): Promise<'granted'> =>
 	getPermission('geolocation', options)
 
 export default getGeolocationPermission

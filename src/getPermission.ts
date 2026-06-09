@@ -5,6 +5,11 @@ export interface GetPermissionOptions {
 	timeout?: number
 }
 
+// `clipboard-read` / `clipboard-write` are valid permission names at runtime but are not (yet)
+// part of the DOM lib's `PermissionName` union. This narrow assertion lets the dedicated clipboard
+// getters satisfy the strictly-typed `permissionName` parameter from a single place.
+export const asPermissionName = (name: string): PermissionName => name as PermissionName
+
 /**
  * Watches the current state of a permission and resolves once it is `'granted'`.
  *

@@ -11,7 +11,7 @@ import getPermission, { type GetPermissionOptions } from './getPermission'
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */
-const getScreenWakeLockPermission = async (options?: GetPermissionOptions): Promise<'granted'> =>
+const getScreenWakeLockPermission = (options?: GetPermissionOptions): Promise<'granted'> =>
 	getPermission('screen-wake-lock', options)
 
 export default getScreenWakeLockPermission
