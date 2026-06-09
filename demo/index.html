@@ -76,6 +76,20 @@
 				color: var(--text);
 			}
 
+			.card-header--action {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+			}
+
+			.card-header--action button {
+				text-transform: none;
+				letter-spacing: normal;
+				padding: 3px 12px;
+				font-size: 11px;
+			}
+
 			.card-body {
 				padding: 16px;
 				display: flex;
@@ -112,13 +126,6 @@
 
 			.support-value {
 				color: var(--text);
-			}
-
-			.btn-row {
-				display: flex;
-				align-items: center;
-				gap: 8px;
-				flex-wrap: wrap;
 			}
 
 			button {
@@ -301,14 +308,14 @@
 				</div>
 			</details>
 
-			<!-- Dedicated permission getters -->
+			<!-- Permission getters -->
 			<div class="card">
-				<div class="card-header">Dedicated permission getters</div>
+				<div class="card-header card-header--action">
+					<span>Permission getters</span>
+					<button id="abort-btn" class="danger">abort</button>
+				</div>
 				<div class="card-body">
 					<div id="getter-rows" class="stack"></div>
-					<div class="btn-row">
-						<button id="abort-btn" class="danger">abort</button>
-					</div>
 					<p class="note">
 						Each button watches the permission with <code>get…Permission({ signal, timeout })</code> and
 						fires the matching browser API to surface the prompt. Whichever settles first wins — the
