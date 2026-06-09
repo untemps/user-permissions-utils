@@ -12,7 +12,7 @@ import type { GetPermissionOptions } from './getPermission'
  * document, so it rejects when the page is hidden.
  *
  * @param options           Optional settings forwarded to the acquisition
- * @param options.signal    Optional AbortSignal to cancel the pending acquisition
+ * @param options.signal    Optional AbortSignal to stop waiting (the underlying prompt keeps running)
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */

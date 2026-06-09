@@ -12,7 +12,7 @@ import type { GetPermissionOptions } from './getPermission'
  * `midi` permission, so browsers that auto-grant non-sysex MIDI may resolve it without any dialog.
  *
  * @param options           Optional settings forwarded to the acquisition
- * @param options.signal    Optional AbortSignal to cancel the pending acquisition
+ * @param options.signal    Optional AbortSignal to stop waiting (the underlying prompt keeps running)
  * @param options.timeout   Optional timeout in milliseconds
  * @returns A promise resolved with `'granted'`
  */

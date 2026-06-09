@@ -13,9 +13,11 @@ export type PermissionTrigger = (signal?: AbortSignal) => Promise<unknown>
  * This generalises {@link getUserMediaStream}'s query-then-trigger pattern to any permission with
  * a native call able to surface its prompt. Unlike the passive {@link getPermission}, it does not
  * need a bounded wait to settle a `'prompt'` state — the trigger itself settles when the user
- * responds — but `signal`/`timeout` still cancel a dialog left unanswered, and are forwarded to
- * the trigger so a resource it holds (e.g. the camera via `getUserMediaStream`) is torn down
- * rather than leaked.
+ * responds. `signal`/`timeout` still stop the wait (the returned promise rejects), and the merged
+ * signal is forwarded to the trigger: a trigger that honours it (camera/microphone, via
+ * `getUserMediaStream`) tears down the resource it holds rather than leaking it. A trigger that
+ * ignores the signal (geolocation, notifications, midi, …) simply stops being awaited — the native
+ * prompt it surfaced is not cancellable, so it stays up and a late response is discarded.
  *
  * @param permissionName    Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param trigger           Native call that surfaces the prompt (resolve = granted, reject = not granted)
@@ -50,8 +52,9 @@ const acquirePermission = async (
 	}
 
 	// 'prompt' → surface the real dialog by firing the native trigger. An internal controller
-	// merges the caller's `signal` and the optional `timeout`, and is forwarded to the trigger so
-	// it can abort its own pending work (e.g. stop a getUserMedia stream) when the wait is cancelled.
+	// merges the caller's `signal` and the optional `timeout` and is forwarded to the trigger: a
+	// trigger that honours it (camera/microphone) aborts its own pending work (e.g. stops a
+	// getUserMedia stream) when the wait is cancelled; one that ignores it just stops being awaited.
 	return new Promise<'granted'>((resolve, reject) => {
 		const controller = new AbortController()
 		let timeoutId: ReturnType<typeof setTimeout> | undefined
