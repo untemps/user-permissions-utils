@@ -127,8 +127,6 @@ async function watchPermissionState(name: string): Promise<void> {
 		renderPermissionState(name, state)
 		log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
 
-		// Subscribe to live changes through the library — no raw navigator.permissions call. The
-		// upfront emit is already covered by checkPermission above, so watch transitions only.
 		await watchPermission(
 			name as PermissionName,
 			(state) => {
