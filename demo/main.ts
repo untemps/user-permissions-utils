@@ -138,7 +138,7 @@ async function watchPermissionState(name: string): Promise<void> {
 	} catch (err) {
 		const error = err as DOMException
 		renderPermissionState(name, 'error')
-		log(`checkPermission("${name}") ✗ ${friendlyError(error)}`, 'error')
+		log(`permission "${name}" ✗ ${friendlyError(error)}`, 'error')
 	}
 }
 
