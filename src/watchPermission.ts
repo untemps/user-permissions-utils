@@ -42,8 +42,9 @@ const watchPermission = async (
 
 	signal?.throwIfAborted()
 
-	// Subscribe before the initial emit so no `change` fired between `query()` resolving and the
-	// upfront callback is missed. The abort listener removes the `change` listener on teardown.
+	// Register the `change` listener, then (by default) emit the current state. Both run
+	// synchronously after `query()` resolves, so no transition can slip between them. The abort
+	// listener removes the `change` listener on teardown (no leak).
 	const listener = () => onChange(permissionStatus.state)
 	permissionStatus.addEventListener('change', listener)
 	signal?.addEventListener('abort', () => permissionStatus.removeEventListener('change', listener), { once: true })
