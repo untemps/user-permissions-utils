@@ -8,30 +8,21 @@ import type { GetPermissionOptions } from './getPermission'
 export type PermissionTrigger = (signal?: AbortSignal) => Promise<unknown>
 
 /**
- * Actively acquires a permission: reads the current state through `navigator.permissions.query()`
- * and, when it is `'prompt'`, fires the native `trigger` that surfaces the real browser dialog,
- * resolving with `'granted'` once the user/UA grants it.
+ * Actively acquires a permission: queries the current state and, on `'prompt'`, fires the native
+ * `trigger` that surfaces the real dialog, resolving with `'granted'` once granted. Generalises
+ * {@link getUserMediaStream}'s query-then-trigger pattern to any permission.
  *
- * This generalises {@link getUserMediaStream}'s query-then-trigger pattern to any permission with
- * a native call able to surface its prompt. Unlike the passive {@link getPermission}, it does not
- * need a bounded wait to settle a `'prompt'` state — the trigger itself settles when the user
- * responds, so `signal`/`timeout` are optional here. They stay advisable for unattended flows
- * though: with neither, the wait lasts as long as the prompt the trigger surfaced (a user who
- * never answers never settles it). `signal`/`timeout` still stop the wait (the returned promise rejects), and the merged
- * signal is forwarded to the trigger: a trigger that honours it (camera/microphone, via
- * `getUserMediaStream`) tears down the resource it holds rather than leaking it. A trigger that
- * ignores the signal (geolocation, notifications, midi, …) simply stops being awaited — the native
- * prompt it surfaced is not cancellable, so it stays up and a late response is discarded.
+ * Unlike the passive {@link getPermission}, the trigger itself settles `'prompt'`, so `signal` /
+ * `timeout` are optional — but advisable for unattended flows (otherwise the wait lasts as long as
+ * the prompt). The merged signal is forwarded to the trigger: one that honours it (camera/microphone)
+ * tears down its resource on cancel; one that ignores it just stops being awaited, leaving its prompt up.
  *
  * @param permissionName    Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param trigger           Native call that surfaces the prompt (resolve = granted, reject = not granted)
- * @param options           Optional settings
  * @param options.signal    Optional AbortSignal to cancel the pending acquisition
- * @param options.timeout   Optional timeout in milliseconds; rejects with a `TimeoutError` once elapsed
+ * @param options.timeout   Optional timeout in milliseconds; rejects with a `TimeoutError`
  * @returns A promise resolved with `'granted'`
- * @throws {DOMException} `NOT_SUPPORTED_ERR` when the Permissions API is unavailable
- * @throws {DOMException} `NOT_ALLOWED_ERR` when the permission is (or becomes) `'denied'`
- * @throws {DOMException} `TimeoutError` when `timeout` elapses before the user responds
+ * @throws {DOMException} `NOT_SUPPORTED_ERR`, `NOT_ALLOWED_ERR` (denied) or `TimeoutError`
  */
 const acquirePermission = async (
 	permissionName: PermissionName,
@@ -55,10 +46,7 @@ const acquirePermission = async (
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
 
-	// 'prompt' → surface the real dialog by firing the native trigger. The bounded wait merges the
-	// caller's `signal` and the optional `timeout` into a single signal forwarded to the trigger: a
-	// trigger that honours it (camera/microphone) aborts its own pending work (e.g. stops a
-	// getUserMedia stream) when the wait is cancelled; one that ignores it just stops being awaited.
+	// 'prompt' → fire the trigger to surface the real dialog, bounded by the merged signal/timeout.
 	return boundedWait<'granted'>({ signal, timeout }, ({ signal: waitSignal, resolve, reject }) => {
 		trigger(waitSignal).then(() => resolve('granted'), reject)
 		return () => {} // the trigger holds no listener to detach

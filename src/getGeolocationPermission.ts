@@ -3,17 +3,10 @@ import { geolocationTrigger } from './_triggers'
 import type { GetPermissionOptions } from './getPermission'
 
 /**
- * Acquires the `geolocation` permission: reads the current state and, on `'prompt'`, surfaces the
- * real browser dialog (via `navigator.geolocation.getCurrentPosition`), resolving with `'granted'`
- * once it is granted.
+ * Acquires the `geolocation` permission, surfacing the real prompt via
+ * `navigator.geolocation.getCurrentPosition` and resolving with `'granted'`.
  *
- * Active counterpart to {@link getPermission} — see {@link acquirePermission} for the full
- * query-then-trigger contract.
- *
- * @param options           Optional settings forwarded to the acquisition
- * @param options.signal    Optional AbortSignal to stop waiting (the underlying prompt keeps running)
- * @param options.timeout   Optional timeout in milliseconds
- * @returns A promise resolved with `'granted'`
+ * Active counterpart to {@link getPermission}; see {@link acquirePermission} for the contract.
  */
 const getGeolocationPermission = (options?: GetPermissionOptions): Promise<'granted'> =>
 	acquirePermission('geolocation', geolocationTrigger, options)

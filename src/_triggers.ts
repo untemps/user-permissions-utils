@@ -3,23 +3,18 @@ import type { PermissionTrigger } from './_acquirePermission'
 
 const permissionDenied = (): DOMException => new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 
-// A permission can be queryable through `navigator.permissions` while the native API that surfaces
-// its prompt is missing (older browsers, non-secure contexts, workers). Normalise that gap to the
-// library's `NOT_SUPPORTED_ERR` `DOMException` — the same name every other entry point throws when
-// its API is absent — so consumers detect "unsupported" uniformly (catch the name) instead of a raw
-// `TypeError` leaking from `undefined.someMethod()`.
+// A permission can be queryable while the API that surfaces its prompt is absent (old browsers,
+// non-secure contexts, workers); normalise that to `NOT_SUPPORTED_ERR` rather than leak a raw
+// `TypeError` from `undefined.someMethod()`.
 const notSupported = (api: string): DOMException => new DOMException(`${api} not supported`, 'NOT_SUPPORTED_ERR')
 
 const stopTracks = (stream: MediaStream): void => {
 	stream.getTracks().forEach((track) => track.stop())
 }
 
-// Native calls that surface each permission's real dialog, normalised so they resolve only when the
-// permission is granted and reject with a `DOMException` otherwise (`NOT_ALLOWED_ERR` on denial,
-// `NOT_SUPPORTED_ERR` when the native API is absent) — letting `acquirePermission` treat every
-// permission identically. `camera`/`microphone` delegate to `getUserMediaStream`, the library's
-// existing acquisition path (which already throws `NOT_SUPPORTED_ERR` when `navigator.mediaDevices`
-// is missing, tears the acquired stream down on abort, and releases it once the grant is confirmed).
+// Native calls that surface each permission's dialog, normalised to resolve only on grant and reject
+// with a `DOMException` (`NOT_ALLOWED_ERR` denied, `NOT_SUPPORTED_ERR` absent) so `acquirePermission`
+// treats them identically. camera/microphone delegate to `getUserMediaStream`.
 
 export const cameraTrigger: PermissionTrigger = (signal) =>
 	getUserMediaStream('camera', { video: true }, { signal }).then(stopTracks)
@@ -35,8 +30,7 @@ export const geolocationTrigger: PermissionTrigger = () =>
 		}
 		navigator.geolocation.getCurrentPosition(
 			() => resolve(),
-			// The error callback conflates denial with POSITION_UNAVAILABLE/TIMEOUT: only a
-			// PERMISSION_DENIED maps to a denial; other failures propagate as-is.
+			// Only PERMISSION_DENIED is a denial; POSITION_UNAVAILABLE/TIMEOUT propagate as-is.
 			(error) => reject(error.code === error.PERMISSION_DENIED ? permissionDenied() : error)
 		)
 	})
@@ -54,9 +48,7 @@ export const midiTrigger: PermissionTrigger = async () => {
 	if (!navigator.requestMIDIAccess) {
 		throw notSupported('Navigator API: requestMIDIAccess')
 	}
-	// Request only the basic `midi` permission queried above (no sysex) — least privilege, never
-	// escalating to the more sensitive sysex grant. Browsers that auto-grant non-sysex MIDI may
-	// therefore resolve this without ever surfacing a dialog.
+	// Basic (non-sysex) access only — least privilege; browsers that auto-grant it may not prompt.
 	await navigator.requestMIDIAccess({ sysex: false })
 }
 
