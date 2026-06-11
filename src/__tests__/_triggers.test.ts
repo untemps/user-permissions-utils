@@ -94,6 +94,12 @@ describe('permission triggers', () => {
 
 			await expect(geolocationTrigger()).rejects.toBe(positionError)
 		})
+
+		it('rejects with NOT_SUPPORTED_ERR when the Geolocation API is absent', async () => {
+			stub(navigator, 'geolocation', undefined)
+
+			await expect(geolocationTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+		})
 	})
 
 	describe('notificationsTrigger', () => {
@@ -107,6 +113,12 @@ describe('permission triggers', () => {
 			stub(globalThis, 'Notification', { requestPermission: () => Promise.resolve('denied') })
 
 			await expect(notificationsTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
+		})
+
+		it('rejects with NOT_SUPPORTED_ERR when the Notification API is absent', async () => {
+			stub(globalThis, 'Notification', undefined)
+
+			await expect(notificationsTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
 		})
 	})
 
@@ -124,6 +136,12 @@ describe('permission triggers', () => {
 
 			await expect(midiTrigger()).rejects.toMatchObject({ name: 'SecurityError' })
 		})
+
+		it('rejects with NOT_SUPPORTED_ERR when the Web MIDI API is absent', async () => {
+			stub(navigator, 'requestMIDIAccess', undefined)
+
+			await expect(midiTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+		})
 	})
 
 	describe('persistentStorageTrigger', () => {
@@ -137,6 +155,12 @@ describe('permission triggers', () => {
 			stub(navigator, 'storage', { persist: () => Promise.resolve(false) })
 
 			await expect(persistentStorageTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
+		})
+
+		it('rejects with NOT_SUPPORTED_ERR when the StorageManager API is absent', async () => {
+			stub(navigator, 'storage', undefined)
+
+			await expect(persistentStorageTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
 		})
 	})
 
@@ -158,6 +182,12 @@ describe('permission triggers', () => {
 
 			await expect(screenWakeLockTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
+
+		it('rejects with NOT_SUPPORTED_ERR when the Screen Wake Lock API is absent', async () => {
+			stub(navigator, 'wakeLock', undefined)
+
+			await expect(screenWakeLockTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+		})
 	})
 
 	describe('storageAccessTrigger', () => {
@@ -171,6 +201,12 @@ describe('permission triggers', () => {
 			stub(document, 'requestStorageAccess', () => Promise.reject(new DOMException('denied', 'NotAllowedError')))
 
 			await expect(storageAccessTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
+		})
+
+		it('rejects with NOT_SUPPORTED_ERR when the Storage Access API is absent', async () => {
+			stub(document, 'requestStorageAccess', undefined)
+
+			await expect(storageAccessTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
 		})
 	})
 })

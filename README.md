@@ -202,7 +202,7 @@ const init = async () => {
 controller.abort()
 ```
 
-> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NOT_SUPPORTED_ERR` `DOMException` when the Permissions API (or, for `getUserMediaStream`, MediaDevices) is unavailable. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
+> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NOT_SUPPORTED_ERR` `DOMException` when the API it relies on is unavailable — the Permissions API (all functions), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
 
 ## Development
 

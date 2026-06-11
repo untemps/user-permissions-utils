@@ -2,8 +2,9 @@ import boundedWait from './_boundedWait'
 import type { GetPermissionOptions } from './getPermission'
 
 // A native call that surfaces a permission's real dialog. It must resolve **only** once the
-// permission is granted and reject with a `DOMException` otherwise (e.g. `NOT_ALLOWED_ERR` on
-// denial/dismissal), so `acquirePermission` can treat every permission identically.
+// permission is granted and reject with a `DOMException` otherwise (`NOT_ALLOWED_ERR` on
+// denial/dismissal, `NOT_SUPPORTED_ERR` when its native API is absent), so `acquirePermission` can
+// treat every permission identically.
 export type PermissionTrigger = (signal?: AbortSignal) => Promise<unknown>
 
 /**
