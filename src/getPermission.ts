@@ -1,3 +1,5 @@
+import boundedWait from './_boundedWait'
+
 export interface GetPermissionOptions {
 	signal?: AbortSignal
 	timeout?: number
@@ -52,17 +54,7 @@ const getPermission = async (
 			)
 		}
 
-		return new Promise<'granted'>((resolve, reject) => {
-			let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-			const cleanup = () => {
-				permissionStatus.removeEventListener('change', onChange)
-				signal?.removeEventListener('abort', onAbort)
-				if (timeoutId !== undefined) {
-					clearTimeout(timeoutId)
-				}
-			}
-
+		return boundedWait<'granted'>({ signal, timeout }, ({ resolve, reject }) => {
 			const onChange = (event: Event) => {
 				const state = (event.target as PermissionStatus).state
 				// A `change` event only settles the wait on a terminal state. Ignore any event
@@ -71,7 +63,6 @@ const getPermission = async (
 				if (state === 'prompt') {
 					return
 				}
-				cleanup()
 				try {
 					resolve(resolveOrRejectBasedOnState(state))
 				} catch (error) {
@@ -79,20 +70,8 @@ const getPermission = async (
 				}
 			}
 
-			const onAbort = () => {
-				cleanup()
-				reject(signal!.reason)
-			}
-
-			if (timeout !== undefined) {
-				timeoutId = setTimeout(() => {
-					cleanup()
-					reject(new DOMException(`Permission request timed out after ${timeout}ms`, 'TimeoutError'))
-				}, timeout)
-			}
-
 			permissionStatus.addEventListener('change', onChange)
-			signal?.addEventListener('abort', onAbort, { once: true })
+			return () => permissionStatus.removeEventListener('change', onChange)
 		})
 	}
 

@@ -1,3 +1,4 @@
+import boundedWait from './_boundedWait'
 import type { GetPermissionOptions } from './getPermission'
 
 // A native call that surfaces a permission's real dialog. It must resolve **only** once the
@@ -51,46 +52,13 @@ const acquirePermission = async (
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
 
-	// 'prompt' → surface the real dialog by firing the native trigger. An internal controller
-	// merges the caller's `signal` and the optional `timeout` and is forwarded to the trigger: a
+	// 'prompt' → surface the real dialog by firing the native trigger. The bounded wait merges the
+	// caller's `signal` and the optional `timeout` into a single signal forwarded to the trigger: a
 	// trigger that honours it (camera/microphone) aborts its own pending work (e.g. stops a
 	// getUserMedia stream) when the wait is cancelled; one that ignores it just stops being awaited.
-	return new Promise<'granted'>((resolve, reject) => {
-		const controller = new AbortController()
-		let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-		const cleanup = () => {
-			signal?.removeEventListener('abort', onCallerAbort)
-			if (timeoutId !== undefined) {
-				clearTimeout(timeoutId)
-			}
-		}
-
-		const onCallerAbort = () => controller.abort(signal!.reason)
-		const onAbort = () => {
-			cleanup()
-			reject(controller.signal.reason)
-		}
-
-		if (timeout !== undefined) {
-			timeoutId = setTimeout(() => {
-				controller.abort(new DOMException(`Permission request timed out after ${timeout}ms`, 'TimeoutError'))
-			}, timeout)
-		}
-
-		signal?.addEventListener('abort', onCallerAbort, { once: true })
-		controller.signal.addEventListener('abort', onAbort, { once: true })
-
-		trigger(controller.signal).then(
-			() => {
-				cleanup()
-				resolve('granted')
-			},
-			(error) => {
-				cleanup()
-				reject(error)
-			}
-		)
+	return boundedWait<'granted'>({ signal, timeout }, ({ signal: waitSignal, resolve, reject }) => {
+		trigger(waitSignal).then(() => resolve('granted'), reject)
+		return () => {} // the trigger holds no listener to detach
 	})
 }
 
