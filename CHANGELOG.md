@@ -1,3 +1,15 @@
+# [2.0.0-beta.8](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.7...v2.0.0-beta.8) (2026-06-11)
+
+
+### Features
+
+* Add dedicated permission functions wrapping getPermission ([#141](https://github.com/untemps/user-permissions-utils/issues/141)) ([ba2e000](https://github.com/untemps/user-permissions-utils/commit/ba2e000f3da80129e8221803f773c38c13d93b74))
+
+
+### BREAKING CHANGES
+
+* Removed the public `isNavigatorPermissionsSupported` and `isNavigatorMediaDevicesSupported` exports. Their existence checks are now inlined into `getPermission`, `acquirePermission`, `checkPermission` and `getUserMediaStream`, which still throw the same `NOT_SUPPORTED_ERR` DOMException when the API is absent — behaviour and error contract are unchanged. To detect support, call `checkPermission(name)` and catch (it rejects with `NOT_SUPPORTED_ERR` when the Permissions API is missing), or check `'permissions' in navigator` / `'mediaDevices' in navigator` directly.
+
 # [2.0.0-beta.7](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.6...v2.0.0-beta.7) (2026-06-08)
 
 
