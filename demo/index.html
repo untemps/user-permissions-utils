@@ -34,7 +34,7 @@
 				font-size: 13px;
 				line-height: 1.6;
 				min-height: 100vh;
-				padding: 32px 16px;
+				padding: 16px 16px;
 			}
 
 			.container {
@@ -49,8 +49,6 @@
 				display: flex;
 				align-items: baseline;
 				gap: 12px;
-				padding-bottom: 16px;
-				border-bottom: 1px solid var(--border);
 			}
 
 			header h1 {
@@ -67,13 +65,27 @@
 			}
 
 			.card-header {
-				padding: 10px 16px;
+				padding: 8px 16px;
 				border-bottom: 1px solid var(--border);
 				font-size: 11px;
 				font-weight: 600;
 				text-transform: uppercase;
 				letter-spacing: 0.08em;
-				color: var(--muted);
+				color: var(--text);
+			}
+
+			.card-header--action {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 12px;
+			}
+
+			.card-header--action button {
+				text-transform: none;
+				letter-spacing: normal;
+				padding: 3px 12px;
+				font-size: 11px;
 			}
 
 			.card-body {
@@ -112,13 +124,6 @@
 
 			.support-value {
 				color: var(--text);
-			}
-
-			.btn-row {
-				display: flex;
-				align-items: center;
-				gap: 8px;
-				flex-wrap: wrap;
 			}
 
 			button {
@@ -221,6 +226,56 @@
 				color: var(--muted);
 				line-height: 1.5;
 			}
+
+			.stack {
+				display: flex;
+				flex-direction: column;
+				gap: 12px;
+			}
+
+			.getter-row {
+				display: flex;
+				align-items: center;
+				gap: 12px;
+			}
+
+			.getter-row button {
+				min-width: 176px;
+				text-align: left;
+			}
+
+			.getter-row .result {
+				padding: 0;
+				min-height: 0;
+			}
+
+			details.card > summary.card-header {
+				cursor: pointer;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				list-style: none;
+				user-select: none;
+			}
+
+			details.card > summary.card-header::-webkit-details-marker {
+				display: none;
+			}
+
+			details.card > summary.card-header::after {
+				content: '▸';
+				font-size: 10px;
+				color: var(--muted);
+				transition: transform 120ms;
+			}
+
+			details.card[open] > summary.card-header::after {
+				transform: rotate(90deg);
+			}
+
+			details.card:not([open]) > summary.card-header {
+				border-bottom: none;
+			}
 		</style>
 	</head>
 	<body>
@@ -230,56 +285,45 @@
 			</header>
 
 			<!-- API Support -->
-			<div class="card">
-				<div class="card-header">API Support</div>
+			<details class="card" open>
+				<summary class="card-header">API Support</summary>
 				<div class="card-body">
-					<div class="support-row">
-						<div class="dot" id="dot-permissions"></div>
-						<span class="support-label">Permissions API</span>
-						<span class="support-value" id="permissions-support">—</span>
-					</div>
-					<div class="support-row">
-						<div class="dot" id="dot-mediadevices"></div>
-						<span class="support-label">MediaDevices API</span>
-						<span class="support-value" id="mediadevices-support">—</span>
-					</div>
+					<div id="api-support" class="stack"></div>
 				</div>
-			</div>
+			</details>
 
-			<!-- checkPermission -->
-			<div class="card">
-				<div class="card-header">checkPermission</div>
+			<!-- check permission -->
+			<details class="card" open>
+				<summary class="card-header">check permission</summary>
 				<div class="card-body">
-					<div class="support-row">
-						<div class="dot" id="dot-permission-microphone"></div>
-						<span class="support-label">microphone</span>
-						<span class="support-value" id="permission-microphone">—</span>
-					</div>
-					<div class="support-row">
-						<div class="dot" id="dot-permission-camera"></div>
-						<span class="support-label">camera</span>
-						<span class="support-value" id="permission-camera">—</span>
-					</div>
+					<div id="permission-states" class="stack"></div>
 					<p class="note">
-						To reset permissions to 'prompt', click the lock or info icon in the browser address bar → reset permissions.
+						Current state of every permission the library exposes, read upfront via
+						<code>checkPermission</code> and kept live through the Permissions API <code>change</code>
+						event. To reset a permission to 'prompt', click the lock or info icon in the browser address bar
+						→ reset permissions.
 					</p>
 				</div>
-			</div>
+			</details>
 
-			<!-- getUserMediaStream -->
+			<!-- Permission getters -->
 			<div class="card">
-				<div class="card-header">getUserMediaStream</div>
+				<div class="card-header card-header--action">
+					<span>Permission getters</span>
+					<button id="abort-btn" class="danger">abort</button>
+				</div>
 				<div class="card-body">
-					<div class="btn-row">
-						<button data-action="getUserMediaStream" data-permission="microphone" data-constraints='{"audio":true}'>
-							microphone
-						</button>
-						<button data-action="getUserMediaStream" data-permission="camera" data-constraints='{"video":true}'>
-							camera
-						</button>
-						<button id="abort-btn" class="danger">abort</button>
-					</div>
-					<div class="result" id="stream-result"></div>
+					<div id="getter-rows" class="stack"></div>
+					<p class="note">
+						Each button calls <code>get…Permission({ signal, timeout })</code> — the library surfaces the
+						real prompt itself and resolves <code>granted</code> (or rejects denied / timed out / cancelled),
+						with no native browser API called here.<br /><code>push</code> and <code>clipboard-*</code> are
+						passive: the library can't prompt for them without consumer infrastructure or clobbering the
+						clipboard, so they reflect the current state or time out.<br /><code style="color: var(--error)"
+							>abort</code
+						>
+						cancels the pending acquisition.
+					</p>
 				</div>
 			</div>
 

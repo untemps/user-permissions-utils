@@ -1,120 +1,233 @@
 import {
-	isNavigatorPermissionsSupported,
-	isNavigatorMediaDevicesSupported,
-	getUserMediaStream,
+	getCameraPermission,
+	getClipboardReadPermission,
+	getClipboardWritePermission,
+	getGeolocationPermission,
+	getMicrophonePermission,
+	getMidiPermission,
+	getNotificationsPermission,
+	getPersistentStoragePermission,
+	getPushPermission,
+	getScreenWakeLockPermission,
+	getStorageAccessPermission,
 	checkPermission,
+	type GetPermissionOptions,
 } from '../src/index'
 
-let activeController: AbortController | null = null
-let activeStream: MediaStream | null = null
+type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 
-const WATCHED_PERMISSIONS: PermissionName[] = ['microphone', 'camera']
+interface PermissionEntry {
+	name: string
+	getter: PermissionGetter
+	// Passive getters (push, clipboard) never surface a dialog — the library cannot trigger them
+	// without consumer-owned infrastructure or a privacy-sensitive side effect — so they only watch.
+	passive?: boolean
+}
+
+interface ApiSupport {
+	label: string
+	supported: () => boolean
+}
+
+type OutcomeKind = 'granted' | 'denied' | 'timeout' | 'aborted' | 'error'
+interface Outcome {
+	kind: OutcomeKind
+	detail?: string
+}
+
+let activeController: AbortController | null = null
+
+// Every permission the library exposes through a dedicated getter. The active getters surface the
+// real prompt themselves; the passive ones only watch the state. `name` doubles as the Permissions
+// API query name.
+const PERMISSIONS: PermissionEntry[] = [
+	{ name: 'camera', getter: getCameraPermission },
+	{ name: 'microphone', getter: getMicrophonePermission },
+	{ name: 'geolocation', getter: getGeolocationPermission },
+	{ name: 'notifications', getter: getNotificationsPermission },
+	{ name: 'midi', getter: getMidiPermission },
+	{ name: 'persistent-storage', getter: getPersistentStoragePermission },
+	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission },
+	{ name: 'storage-access', getter: getStorageAccessPermission },
+	{ name: 'push', getter: getPushPermission, passive: true },
+	{ name: 'clipboard-read', getter: getClipboardReadPermission, passive: true },
+	{ name: 'clipboard-write', getter: getClipboardWritePermission, passive: true },
+]
+
+// Every browser API the dedicated getters rely on to surface a prompt — shown in the API Support card.
+const APIS: ApiSupport[] = [
+	{ label: 'Permissions', supported: () => 'permissions' in navigator },
+	{ label: 'MediaDevices', supported: () => 'mediaDevices' in navigator },
+	{ label: 'Geolocation', supported: () => 'geolocation' in navigator },
+	{ label: 'Notifications', supported: () => 'Notification' in window },
+	{ label: 'Web MIDI', supported: () => 'requestMIDIAccess' in navigator },
+	{ label: 'Push', supported: () => 'PushManager' in window },
+	{ label: 'Storage Manager', supported: () => 'storage' in navigator },
+	{ label: 'Screen Wake Lock', supported: () => 'wakeLock' in navigator },
+	{ label: 'Storage Access', supported: () => 'requestStorageAccess' in document },
+	{ label: 'Clipboard', supported: () => 'clipboard' in navigator },
+]
+
+// Friendly copy for the DOMException names the flow can surface, so logs read in plain language
+// instead of raw codes like "NOT_ALLOWED_ERR".
+const FRIENDLY_ERRORS: Record<string, string> = {
+	NotSupportedError: 'not supported in this browser',
+	NOT_SUPPORTED_ERR: 'not supported in this browser',
+	SecurityError: 'blocked by the browser',
+	TypeError: 'not queryable in this browser',
+}
+
+const GETTER_TIMEOUT = 20000
 const STATE_DOT_CLASS: Record<string, string> = { granted: 'supported', denied: 'unsupported', prompt: 'prompt' }
 const STATE_LOG_TYPE: Record<string, string> = { granted: 'success', denied: 'warning', prompt: '' }
 const logEl = document.getElementById('log')!
 
 document.addEventListener('DOMContentLoaded', () => {
-	initSupportStatus()
-	initPermissionStates(WATCHED_PERMISSIONS)
-
-	document.querySelectorAll<HTMLElement>('[data-action="getUserMediaStream"]').forEach((btn) => {
-		btn.addEventListener('click', () =>
-			handleGetUserMediaStream(btn.dataset.permission as PermissionName, JSON.parse(btn.dataset.constraints!))
-		)
-	})
+	initSupportStatus(APIS)
+	initPermissionStates(PERMISSIONS)
+	initDedicatedGetters(PERMISSIONS)
 
 	document.getElementById('abort-btn')!.addEventListener('click', handleAbort)
 })
 
-function initSupportStatus(): void {
-	const permissionsOk = isNavigatorPermissionsSupported()
-	const mediaDevicesOk = isNavigatorMediaDevicesSupported()
-
-	setSupport('permissions', permissionsOk)
-	setSupport('mediadevices', mediaDevicesOk)
-}
-
-function setSupport(key: string, ok: boolean): void {
-	document.getElementById(`dot-${key}`)!.classList.add(ok ? 'supported' : 'unsupported')
-	document.getElementById(`${key}-support`)!.textContent = ok ? 'supported' : 'not supported'
-}
-
-function initPermissionStates(permissionNames: PermissionName[]): void {
-	permissionNames.forEach(async (name) => {
-		try {
-			// Read the current state upfront through the library guard — no prompt, no waiting
-			const state = await checkPermission(name)
-			renderPermissionState(name, state)
-			log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
-
-			// Subscribe to live changes (a capability checkPermission intentionally does not cover)
-			const status = await navigator.permissions.query({ name })
-			status.addEventListener('change', () => {
-				renderPermissionState(name, status.state)
-				log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
-			})
-		} catch (err) {
-			const error = err as DOMException
-			renderPermissionState(name, 'error')
-			log(`checkPermission("${name}") ✗ ${error.name}: ${error.message}`, 'error')
-		}
+function initSupportStatus(apis: ApiSupport[]): void {
+	const container = document.getElementById('api-support')!
+	apis.forEach((api) => {
+		const ok = api.supported()
+		const row = document.createElement('div')
+		row.className = 'support-row'
+		row.innerHTML =
+			`<div class="dot ${ok ? 'supported' : 'unsupported'}"></div>` +
+			`<span class="support-label">${api.label}</span>` +
+			`<span class="support-value">${ok ? 'supported' : 'not supported'}</span>`
+		container.append(row)
 	})
+}
+
+function initPermissionStates(entries: PermissionEntry[]): void {
+	const container = document.getElementById('permission-states')!
+	entries.forEach((entry) => {
+		const row = document.createElement('div')
+		row.className = 'support-row'
+		row.innerHTML =
+			`<div class="dot" id="dot-permission-${entry.name}"></div>` +
+			`<span class="support-label">${entry.name}</span>` +
+			`<span class="support-value" id="permission-${entry.name}">—</span>`
+		container.append(row)
+
+		watchPermissionState(entry.name)
+	})
+}
+
+async function watchPermissionState(name: string): Promise<void> {
+	try {
+		// Read the current state upfront through the library guard — no prompt, no waiting
+		const state = await checkPermission(name as PermissionName)
+		renderPermissionState(name, state)
+		log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
+
+		// Subscribe to live changes (a capability checkPermission intentionally does not cover)
+		const status = await navigator.permissions.query({ name: name as PermissionName })
+		status.addEventListener('change', () => {
+			renderPermissionState(name, status.state)
+			log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
+		})
+	} catch (err) {
+		const error = err as DOMException
+		renderPermissionState(name, 'error')
+		log(`checkPermission("${name}") ✗ ${friendlyError(error)}`, 'error')
+	}
 }
 
 function renderPermissionState(name: string, state: PermissionState | 'error'): void {
 	const dot = document.getElementById(`dot-permission-${name}`)!
 	const label = document.getElementById(`permission-${name}`)!
-	dot.className = `dot ${STATE_DOT_CLASS[state]}`
+	dot.className = `dot ${state === 'error' ? 'unsupported' : (STATE_DOT_CLASS[state] ?? '')}`
 	label.textContent = state
 }
 
-async function handleGetUserMediaStream(
-	permissionName: PermissionName,
-	constraints: MediaStreamConstraints
-): Promise<void> {
-	stopActiveStream()
-	activeController = new AbortController()
+function initDedicatedGetters(entries: PermissionEntry[]): void {
+	const container = document.getElementById('getter-rows')!
+	entries.forEach((entry) => {
+		const row = document.createElement('div')
+		row.className = 'getter-row'
+		row.innerHTML = `<button type="button">${entry.name}</button><span class="result" id="getter-result-${entry.name}">—</span>`
+		row.querySelector('button')!.addEventListener('click', () => handleGetPermission(entry))
+		container.append(row)
+	})
+}
 
-	setResult('stream-result', `acquiring ${permissionName} stream…`, 'pending')
-	log(`getUserMediaStream("${permissionName}") →`, 'pending')
+async function handleGetPermission(entry: PermissionEntry): Promise<void> {
+	// A new acquisition supersedes any pending one; the Abort button cancels the current one.
+	activeController?.abort()
+	const controller = new AbortController()
+	activeController = controller
 
+	const resultId = `getter-result-${entry.name}`
+	setResult(resultId, 'watching…', 'pending')
+	log(`${entry.name} → watching…`, 'pending')
+
+	// The getter does it all: it reads the state and, on 'prompt', surfaces the real prompt and
+	// resolves once the permission settles. No native API call here — the library owns the trigger.
+	let outcome: Outcome
 	try {
-		activeStream = await getUserMediaStream(permissionName, constraints, { signal: activeController.signal })
-
-		const tracks = activeStream.getTracks()
-		const kind = tracks[0]?.kind ?? 'unknown'
-		const label = `MediaStream — ${tracks.length} ${kind} track${tracks.length !== 1 ? 's' : ''} (id: ${activeStream.id.slice(0, 8)}…)`
-
-		setResult('stream-result', `→ ${label}`, 'success')
-		log(`getUserMediaStream("${permissionName}") → ${label}`, 'success')
+		await entry.getter({ signal: controller.signal, timeout: GETTER_TIMEOUT })
+		outcome = { kind: 'granted' }
 	} catch (err) {
-		const error = err as DOMException
-		if (error.name === 'AbortError') {
-			setResult('stream-result', '→ aborted', 'warning')
-			log(`getUserMediaStream("${permissionName}") — aborted`, 'warning')
-		} else {
-			setResult('stream-result', `→ ${error.name}: ${error.message}`, 'error')
-			log(`getUserMediaStream("${permissionName}") ✗ ${error.name}: ${error.message}`, 'error')
-		}
+		outcome = errorToOutcome(err as DOMException)
 	} finally {
-		activeController = null
+		if (activeController === controller) {
+			activeController = null
+		}
 	}
+
+	const { text, type } = describeOutcome(entry, outcome)
+	setResult(resultId, `→ ${text}`, type)
+	log(`${entry.name} → ${text}`, type)
+}
+
+function errorToOutcome(err: DOMException): Outcome {
+	switch (err.name) {
+		case 'NotAllowedError':
+		case 'NOT_ALLOWED_ERR':
+			return { kind: 'denied' }
+		case 'TimeoutError':
+			return { kind: 'timeout' }
+		case 'AbortError':
+			return { kind: 'aborted' }
+		default:
+			return { kind: 'error', detail: friendlyError(err) }
+	}
+}
+
+function describeOutcome(entry: PermissionEntry, outcome: Outcome): { text: string; type: string } {
+	switch (outcome.kind) {
+		case 'granted':
+			return { text: 'granted', type: 'success' }
+		case 'denied':
+			return { text: 'denied', type: 'warning' }
+		case 'timeout':
+			return {
+				text: entry.passive ? 'passive watcher — no prompt to surface' : 'timed out — no response',
+				type: 'warning',
+			}
+		case 'aborted':
+			return { text: 'cancelled', type: 'warning' }
+		case 'error':
+			return { text: outcome.detail ?? 'unavailable', type: 'error' }
+	}
+}
+
+function friendlyError(err: DOMException): string {
+	return FRIENDLY_ERRORS[err.name] ?? err.message ?? err.name
 }
 
 function handleAbort(): void {
 	if (activeController) {
 		activeController.abort()
+		log('abort — cancelled the pending permission acquisition', 'warning')
 	} else {
-		stopActiveStream()
-		setResult('stream-result', '→ no active stream', 'pending')
 		log('abort — no active operation', 'warning')
-	}
-}
-
-function stopActiveStream(): void {
-	if (activeStream) {
-		activeStream.getTracks().forEach((t) => t.stop())
-		activeStream = null
 	}
 }
 

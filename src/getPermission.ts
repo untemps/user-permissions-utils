@@ -1,37 +1,33 @@
-import isNavigatorPermissionsSupported from './isNavigatorPermissionsSupported'
+import boundedWait from './_boundedWait'
 
 export interface GetPermissionOptions {
 	signal?: AbortSignal
 	timeout?: number
 }
 
+// `clipboard-read` / `clipboard-write` are valid at runtime but not (yet) in the DOM
+// `PermissionName` union — this narrow assertion satisfies the typed parameter from one place.
+export const asPermissionName = (name: string): PermissionName => name as PermissionName
+
 /**
- * Watches the current state of a permission and resolves once it is `'granted'`.
+ * Watches a permission and resolves once it is `'granted'`. **Passive**: it reads the state via
+ * `navigator.permissions.query()` (which never prompts) and, on `'prompt'`, waits for the `change`
+ * event — which only fires once something else (e.g. `getUserMediaStream`) triggers the real request.
  *
- * This is a **passive** watcher: it reads the state through `navigator.permissions.query()`,
- * which never displays a permission dialog. When the state is `'prompt'`, it waits for the
- * `change` event — which only fires when something else (e.g. `getUserMediaStream`,
- * `geolocation.getCurrentPosition`) triggers the real request and the user responds.
+ * Since nothing transitions `'prompt'` on its own, the wait must be bounded by `signal` and/or
+ * `timeout`; with neither, it rejects immediately with `InvalidStateError` rather than hanging.
  *
- * Because nothing transitions a `'prompt'` state on its own, the wait must be bounded: pass a
- * `signal`, a `timeout`, or both. If neither is provided while the state is `'prompt'`, the
- * promise rejects immediately with an `InvalidStateError` instead of hanging forever.
- *
- * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
- * @param options                   Optional settings
- * @param options.signal            Optional AbortSignal to cancel the pending wait (rejects with the signal reason)
- * @param options.timeout           Optional timeout in milliseconds; rejects with a `TimeoutError` once elapsed
+ * @param permissionName    Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
+ * @param options.signal    Optional AbortSignal to cancel the pending wait
+ * @param options.timeout   Optional timeout in milliseconds; rejects with a `TimeoutError`
  * @returns A promise resolved with `'granted'`
- * @throws {DOMException} `NOT_SUPPORTED_ERR` when the Permissions API is unavailable
- * @throws {DOMException} `NOT_ALLOWED_ERR` when the permission is (or becomes) `'denied'`
- * @throws {DOMException} `InvalidStateError` when the state is `'prompt'` and neither `signal` nor `timeout` is provided
- * @throws {DOMException} `TimeoutError` when `timeout` elapses before the permission is granted
+ * @throws {DOMException} `NOT_SUPPORTED_ERR`, `NOT_ALLOWED_ERR` (denied), `InvalidStateError` or `TimeoutError`
  */
 const getPermission = async (
 	permissionName: PermissionName,
 	{ signal, timeout }: GetPermissionOptions = {}
 ): Promise<'granted'> => {
-	if (!isNavigatorPermissionsSupported()) {
+	if (!navigator.permissions) {
 		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
 	}
 
@@ -49,26 +45,14 @@ const getPermission = async (
 			)
 		}
 
-		return new Promise<'granted'>((resolve, reject) => {
-			let timeoutId: ReturnType<typeof setTimeout> | undefined
-
-			const cleanup = () => {
-				permissionStatus.removeEventListener('change', onChange)
-				signal?.removeEventListener('abort', onAbort)
-				if (timeoutId !== undefined) {
-					clearTimeout(timeoutId)
-				}
-			}
-
+		return boundedWait<'granted'>({ signal, timeout }, ({ resolve, reject }) => {
 			const onChange = (event: Event) => {
 				const state = (event.target as PermissionStatus).state
-				// A `change` event only settles the wait on a terminal state. Ignore any event
-				// that leaves us in `'prompt'` so the watcher keeps waiting (still bounded by
-				// `signal`/`timeout`) instead of settling with a non-`'granted'` value.
+				// Settle only on a terminal state; ignore events that stay in `'prompt'` so the
+				// watcher keeps waiting (still bounded by `signal`/`timeout`).
 				if (state === 'prompt') {
 					return
 				}
-				cleanup()
 				try {
 					resolve(resolveOrRejectBasedOnState(state))
 				} catch (error) {
@@ -76,29 +60,16 @@ const getPermission = async (
 				}
 			}
 
-			const onAbort = () => {
-				cleanup()
-				reject(signal!.reason)
-			}
-
-			if (timeout !== undefined) {
-				timeoutId = setTimeout(() => {
-					cleanup()
-					reject(new DOMException(`Permission request timed out after ${timeout}ms`, 'TimeoutError'))
-				}, timeout)
-			}
-
 			permissionStatus.addEventListener('change', onChange)
-			signal?.addEventListener('abort', onAbort, { once: true })
+			return () => permissionStatus.removeEventListener('change', onChange)
 		})
 	}
 
 	return resolveOrRejectBasedOnState(permissionStatus.state)
 }
 
-// Accepts only terminal states: `'prompt'` is excluded at the type level, so every caller must
-// filter it out first. After the `'denied'` throw, TypeScript narrows `state` to `'granted'`, so
-// the return needs no cast — the `Promise<'granted'>` contract is enforced by the compiler.
+// Terminal states only — `'prompt'` is excluded at the type level. After the `'denied'` throw, TS
+// narrows `state` to `'granted'`, so the return needs no cast.
 const resolveOrRejectBasedOnState = (state: Exclude<PermissionState, 'prompt'>): 'granted' => {
 	if (state === 'denied') {
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
