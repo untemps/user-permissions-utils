@@ -104,6 +104,8 @@ const init = async () => {
 
 > **`signal` / `timeout` on the active getters stop the _wait_, not the native prompt.** Aborting or timing out rejects the returned promise, but the browser cannot cancel a dialog it already surfaced: the prompt stays open and a late grant is reflected only in the live permission state (e.g. via `checkPermission`), not in the rejected promise. The one exception is `getCameraPermission` / `getMicrophonePermission`, which forward the signal into `getUserMediaStream` and tear the acquired stream down so the camera/microphone is never left active.
 
+> **Pass a `timeout` for unattended flows.** Unlike the passive getters (and `getPermission`), the active getters don't require `signal`/`timeout` on `'prompt'` — the native prompt they surface settles the wait when the user responds. But if the user neither accepts nor dismisses, the wait lasts as long as the prompt does. Add a `timeout` (and/or `signal`) whenever you can't rely on a timely response.
+
 **Passive getters** only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library cannot trigger them from a permission name alone without consumer-owned infrastructure or a privacy-sensitive side effect. The **bounded-wait** requirement on `'prompt'` therefore applies (pass `signal` and/or `timeout`):
 
 | Function | Permission name | Why it stays passive |

@@ -21,7 +21,8 @@ export interface BoundedSettle<T> {
  *
  * `subscribe` receives the merged `signal` (to forward to a cancellable producer) plus `resolve` /
  * `reject`, and returns a teardown for whatever it attached (e.g. an event listener). It must not
- * settle synchronously, but the synchronous-settle case is handled defensively all the same.
+ * settle synchronously, but the synchronous-settle case is handled defensively all the same — as is
+ * a `subscribe` that throws synchronously (the wait rejects with the error, timer and listener torn down).
  *
  * @param options           Optional settings bounding the wait
  * @param options.signal    Optional AbortSignal to cancel the wait (rejects with its reason)
@@ -63,17 +64,26 @@ const boundedWait = <T>(
 		signal?.addEventListener('abort', onCallerAbort, { once: true })
 		controller.signal.addEventListener('abort', onAbort, { once: true })
 
-		teardown = subscribe({
-			signal: controller.signal,
-			resolve: (value) => {
-				cleanup()
-				resolve(value)
-			},
-			reject: (reason) => {
-				cleanup()
-				reject(reason)
-			},
-		})
+		try {
+			teardown = subscribe({
+				signal: controller.signal,
+				resolve: (value) => {
+					cleanup()
+					resolve(value)
+				},
+				reject: (reason) => {
+					cleanup()
+					reject(reason)
+				},
+			})
+		} catch (error) {
+			// `subscribe` threw before returning its teardown (e.g. a trigger that touches a missing
+			// native API). Clear the timer and detach the caller-abort listener we already attached —
+			// without this they would leak until they fire/GC — then reject with the thrown error.
+			cleanup()
+			reject(error)
+			return
+		}
 
 		// If `subscribe` settled synchronously, `cleanup` ran before `teardown` was assigned above —
 		// so tear down here what it just returned.

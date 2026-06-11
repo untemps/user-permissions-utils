@@ -121,4 +121,36 @@ describe('boundedWait', () => {
 			}
 		})
 	})
+
+	// A producer that throws before returning its teardown (e.g. a trigger reaching for a missing
+	// native API) must not leak the timer/listener `boundedWait` already attached.
+	describe('subscribe throws synchronously', () => {
+		it('rejects with the thrown error and clears the timeout (no leaked timer)', async () => {
+			vi.useFakeTimers()
+			try {
+				const error = new TypeError('navigator.requestMIDIAccess is not a function')
+				const promise = boundedWait<string>({ timeout: 1000 }, () => {
+					throw error
+				})
+
+				await expect(promise).rejects.toBe(error)
+				expect(vi.getTimerCount()).toBe(0)
+			} finally {
+				vi.useRealTimers()
+			}
+		})
+
+		it('detaches the caller abort listener when subscribe throws', async () => {
+			const controller = new AbortController()
+			const removeSpy = vi.spyOn(controller.signal, 'removeEventListener')
+			const error = new Error('boom')
+
+			await expect(
+				boundedWait<string>({ signal: controller.signal }, () => {
+					throw error
+				})
+			).rejects.toBe(error)
+			expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function))
+		})
+	})
 })

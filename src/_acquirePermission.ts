@@ -14,7 +14,9 @@ export type PermissionTrigger = (signal?: AbortSignal) => Promise<unknown>
  * This generalises {@link getUserMediaStream}'s query-then-trigger pattern to any permission with
  * a native call able to surface its prompt. Unlike the passive {@link getPermission}, it does not
  * need a bounded wait to settle a `'prompt'` state — the trigger itself settles when the user
- * responds. `signal`/`timeout` still stop the wait (the returned promise rejects), and the merged
+ * responds, so `signal`/`timeout` are optional here. They stay advisable for unattended flows
+ * though: with neither, the wait lasts as long as the prompt the trigger surfaced (a user who
+ * never answers never settles it). `signal`/`timeout` still stop the wait (the returned promise rejects), and the merged
  * signal is forwarded to the trigger: a trigger that honours it (camera/microphone, via
  * `getUserMediaStream`) tears down the resource it holds rather than leaking it. A trigger that
  * ignores the signal (geolocation, notifications, midi, …) simply stops being awaited — the native
