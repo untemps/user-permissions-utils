@@ -83,8 +83,3 @@ export const teardownMediaDevicesMock = (): void => {
 	restoreProperty('mediaDevices')
 	restoreProperty('MediaDevices')
 }
-
-export const teardownPermissionsAndMediaDevicesMock = (): void => {
-	teardownPermissionsMock()
-	teardownMediaDevicesMock()
-}
