@@ -17,15 +17,17 @@ export interface WatchPermissionOptions {
  * receive transitions only.
  *
  * The subscription lives until the optional `signal` aborts, at which point the `change` listener is
- * removed (no leak). Omit the `signal` for a watch that lasts the page's lifetime.
+ * removed (no leak). Omit the `signal` for a watch that lasts the page's lifetime. Aborting *after*
+ * the subscription is active is a silent teardown — the returned promise has already resolved, so it
+ * is not rejected; only an abort *before* the subscription is active rejects with `AbortError`.
  *
  * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param onChange                  Called with the permission state on each transition (and once upfront unless `emitImmediately` is `false`)
  * @param options                   Optional settings
- * @param options.signal            Optional AbortSignal that stops the subscription (removes the `change` listener)
+ * @param options.signal            Optional AbortSignal that stops the subscription (removes the `change` listener); aborting before the subscription is active rejects with `AbortError` instead
  * @param options.emitImmediately   When `true` (default), invokes `onChange` with the current state before listening for changes
  * @returns A promise resolved once the subscription is active
- * @throws {DOMException} `NOT_SUPPORTED_ERR` when the Permissions API is unavailable
+ * @throws {DOMException} `NOT_SUPPORTED_ERR` when the Permissions API is unavailable, or `AbortError` when `signal` is already aborted before the subscription is active
  */
 const watchPermission = async (
 	permissionName: PermissionName,
@@ -42,9 +44,10 @@ const watchPermission = async (
 
 	signal?.throwIfAborted()
 
-	// Register the `change` listener, then (by default) emit the current state. Both run
-	// synchronously after `query()` resolves, so no transition can slip between them. The abort
-	// listener removes the `change` listener on teardown (no leak).
+	// Register the `change` listener before the upfront emit. There is no async gap between
+	// `query()` resolving and this synchronous block, so the browser can't slip a `change` event in
+	// regardless of order — subscribing first is defensive, covering only a transition that `onChange`
+	// itself might trigger. The abort listener removes the `change` listener on teardown (no leak).
 	const listener = () => onChange(permissionStatus.state)
 	permissionStatus.addEventListener('change', listener)
 	signal?.addEventListener('abort', () => permissionStatus.removeEventListener('change', listener), { once: true })
