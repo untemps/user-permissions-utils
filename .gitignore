@@ -21,6 +21,9 @@ package-lock.json
 .idea/
 *.iml
 
+# Claude Code
+.claude/
+
 # Jest
 coverage/
 __snapshots__/

@@ -11,6 +11,7 @@ import {
 	getScreenWakeLockPermission,
 	getStorageAccessPermission,
 	checkPermission,
+	watchPermission,
 	type GetPermissionOptions,
 } from '../src/index'
 
@@ -126,16 +127,18 @@ async function watchPermissionState(name: string): Promise<void> {
 		renderPermissionState(name, state)
 		log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
 
-		// Subscribe to live changes (a capability checkPermission intentionally does not cover)
-		const status = await navigator.permissions.query({ name: name as PermissionName })
-		status.addEventListener('change', () => {
-			renderPermissionState(name, status.state)
-			log(`permission "${name}" changed → ${status.state}`, STATE_LOG_TYPE[status.state])
-		})
+		await watchPermission(
+			name as PermissionName,
+			(state) => {
+				renderPermissionState(name, state)
+				log(`permission "${name}" changed → ${state}`, STATE_LOG_TYPE[state])
+			},
+			{ emitImmediately: false }
+		)
 	} catch (err) {
 		const error = err as DOMException
 		renderPermissionState(name, 'error')
-		log(`checkPermission("${name}") ✗ ${friendlyError(error)}`, 'error')
+		log(`permission "${name}" ✗ ${friendlyError(error)}`, 'error')
 	}
 }
 

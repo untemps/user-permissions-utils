@@ -19,7 +19,12 @@ yarn add @untemps/user-permissions-utils
 This package is written in TypeScript and ships its own type declarations — no extra `@types/...` package is required. The option types are exported for convenience:
 
 ```typescript
-import { getPermission, getUserMediaStream, type GetPermissionOptions, type GetUserMediaStreamOptions } from '@untemps/user-permissions-utils'
+import {
+	getPermission,
+	getUserMediaStream,
+	type GetPermissionOptions,
+	type GetUserMediaStreamOptions,
+} from '@untemps/user-permissions-utils'
 ```
 
 `permissionName` is typed as the DOM `PermissionName` (e.g. `'microphone'`, `'camera'`) and `mediaStreamConstraints` as the DOM `MediaStreamConstraints`.
@@ -75,16 +80,16 @@ For permissions with a fixed name, dedicated wrappers spare you from typing (and
 
 **Active getters** read the current state and, on `'prompt'`, fire the matching native API to surface the real dialog, resolving once granted (or rejecting on denial / timeout / abort):
 
-| Function | Permission name | Prompt surfaced via |
-|---|---|---|
-| `getCameraPermission` | `'camera'` | `getUserMediaStream` |
-| `getMicrophonePermission` | `'microphone'` | `getUserMediaStream` |
-| `getGeolocationPermission` | `'geolocation'` | `navigator.geolocation.getCurrentPosition` |
-| `getNotificationsPermission` | `'notifications'` | `Notification.requestPermission` |
-| `getMidiPermission` | `'midi'` | `navigator.requestMIDIAccess({ sysex: false })` |
-| `getPersistentStoragePermission` | `'persistent-storage'` | `navigator.storage.persist` |
-| `getScreenWakeLockPermission` | `'screen-wake-lock'` | `navigator.wakeLock.request('screen')` |
-| `getStorageAccessPermission` | `'storage-access'` | `document.requestStorageAccess` |
+| Function                         | Permission name        | Prompt surfaced via                             |
+| -------------------------------- | ---------------------- | ----------------------------------------------- |
+| `getCameraPermission`            | `'camera'`             | `getUserMediaStream`                            |
+| `getMicrophonePermission`        | `'microphone'`         | `getUserMediaStream`                            |
+| `getGeolocationPermission`       | `'geolocation'`        | `navigator.geolocation.getCurrentPosition`      |
+| `getNotificationsPermission`     | `'notifications'`      | `Notification.requestPermission`                |
+| `getMidiPermission`              | `'midi'`               | `navigator.requestMIDIAccess({ sysex: false })` |
+| `getPersistentStoragePermission` | `'persistent-storage'` | `navigator.storage.persist`                     |
+| `getScreenWakeLockPermission`    | `'screen-wake-lock'`   | `navigator.wakeLock.request('screen')`          |
+| `getStorageAccessPermission`     | `'storage-access'`     | `document.requestStorageAccess`                 |
 
 ```javascript
 import { getCameraPermission } from '@untemps/user-permissions-utils'
@@ -108,10 +113,10 @@ const init = async () => {
 
 **Passive getters** only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library cannot trigger them from a permission name alone without consumer-owned infrastructure or a privacy-sensitive side effect. The **bounded-wait** requirement on `'prompt'` therefore applies (pass `signal` and/or `timeout`):
 
-| Function | Permission name | Why it stays passive |
-|---|---|---|
-| `getPushPermission` | `'push'` | needs a registered service worker and a VAPID key |
-| `getClipboardReadPermission` | `'clipboard-read'` | the only way to prompt is to read the user's clipboard |
+| Function                      | Permission name     | Why it stays passive                                        |
+| ----------------------------- | ------------------- | ----------------------------------------------------------- |
+| `getPushPermission`           | `'push'`            | needs a registered service worker and a VAPID key           |
+| `getClipboardReadPermission`  | `'clipboard-read'`  | the only way to prompt is to read the user's clipboard      |
 | `getClipboardWritePermission` | `'clipboard-write'` | the only way to prompt is to overwrite the user's clipboard |
 
 Trigger those yourself (e.g. `registration.pushManager.subscribe(...)`, `navigator.clipboard.read()`), then let the passive getter resolve.
@@ -142,6 +147,41 @@ const init = async () => {
 }
 ```
 
+`watchPermission`:
+
+Subscribes to a permission's live state and calls `onChange` on every transition. Where `checkPermission` reads the state **once** and `getPermission` waits a **single** time for `'granted'`, this is a **continuous observer**: it wraps `navigator.permissions.query()` and its `change` event, so you never reach for the raw browser API. Like `query()`, it never displays a dialog — it only reports the state as it changes (e.g. once `getUserMediaStream` or a dedicated getter surfaces the real prompt and the user responds).
+
+By default it emits the current state immediately (so a single call replaces a `checkPermission` read followed by a manual subscription), then on every `change`. Pass `emitImmediately: false` to receive transitions only.
+
+```javascript
+import { watchPermission } from '@untemps/user-permissions-utils'
+
+const init = async () => {
+	try {
+		await watchPermission('microphone', (state) => {
+			// 'granted' | 'denied' | 'prompt' — keep a banner/button in sync
+			updateUI(state)
+		})
+	} catch (error) {
+		// Thrown when the Permissions API is unsupported or the query fails
+		console.error(error)
+	}
+}
+```
+
+The subscription lives until the optional `signal` aborts, at which point the `change` listener is removed. Omit the `signal` for a watch that lasts the page's lifetime.
+
+```javascript
+import { watchPermission } from '@untemps/user-permissions-utils'
+
+const controller = new AbortController()
+
+await watchPermission('microphone', (state) => updateUI(state), { signal: controller.signal })
+
+// Stop watching (removes the underlying change listener)
+controller.abort()
+```
+
 `getUserMediaStream`:
 
 Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation. If the signal aborts while acquisition is still in flight, a stream that resolves afterwards is torn down automatically (its tracks are stopped), so the camera or microphone is never left active.
@@ -149,9 +189,9 @@ Returns a promise resolved when the permission is granted and the stream is retr
 The `permissionName` and `mediaStreamConstraints` must match the same media device:
 
 | `permissionName` | `mediaStreamConstraints` |
-|---|---|
-| `'microphone'` | `{ audio: true }` |
-| `'camera'` | `{ video: true }` |
+| ---------------- | ------------------------ |
+| `'microphone'`   | `{ audio: true }`        |
+| `'camera'`       | `{ video: true }`        |
 
 ```javascript
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
@@ -223,4 +263,4 @@ yarn dev
 
 ## Todos
 
--   Extend the dedicated permission getters to sensor/device permissions (`accelerometer`, `bluetooth`, `gyroscope`, `magnetometer`, …) once they land in the DOM `PermissionName` type
+- Extend the dedicated permission getters to sensor/device permissions (`accelerometer`, `bluetooth`, `gyroscope`, `magnetometer`, …) once they land in the DOM `PermissionName` type
