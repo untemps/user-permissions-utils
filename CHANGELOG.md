@@ -1,3 +1,10 @@
+# [2.0.0-beta.9](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.8...v2.0.0-beta.9) (2026-06-11)
+
+
+### Features
+
+* Add watchPermission to subscribe to live permission state changes ([#143](https://github.com/untemps/user-permissions-utils/issues/143)) ([9373004](https://github.com/untemps/user-permissions-utils/commit/93730046259368d97768a146fe77c94572412b7c))
+
 # [2.0.0-beta.8](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.7...v2.0.0-beta.8) (2026-06-11)
 
 
