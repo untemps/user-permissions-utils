@@ -78,9 +78,9 @@ controller.abort()
 
 For permissions with a fixed name, dedicated wrappers spare you from typing (and mistyping) the permission string — and, for most of them, surface the prompt for you so you never reach for the native browser API. All forward the same `{ signal?, timeout? }` options and resolve with `'granted'`.
 
-**Active getters** read the current state and, on `'prompt'`, fire the matching native API to surface the real dialog, resolving once granted (or rejecting on denial / timeout / abort):
+**Active getters** read the current state and, on `'prompt'`, fire the matching native API to acquire the permission, resolving once granted (or rejecting on denial / timeout / abort). For most this surfaces the real browser dialog, but a few are granted heuristically or by policy and resolve without one (see the note below):
 
-| Function                         | Permission name        | Prompt surfaced via                             |
+| Function                         | Permission name        | Acquired via                                    |
 | -------------------------------- | ---------------------- | ----------------------------------------------- |
 | `getCameraPermission`            | `'camera'`             | `getUserMediaStream`                            |
 | `getMicrophonePermission`        | `'microphone'`         | `getUserMediaStream`                            |
@@ -106,6 +106,8 @@ const init = async () => {
 ```
 
 > Use `getUserMediaStream` instead of `getCameraPermission` / `getMicrophonePermission` when you need the resulting `MediaStream` rather than just the grant.
+
+> **A few active getters resolve without ever showing a dialog.** `persistent-storage`, `midi`, `screen-wake-lock` and `storage-access` are granted heuristically or by policy rather than through an explicit prompt: Chromium decides `persistent-storage` heuristically with no dialog, non-sysex `midi` is often auto-granted, `screen-wake-lock` is policy-gated, and `storage-access` may settle without a visible prompt depending on browser and context. They still fire the matching native API listed above — it just may not surface a dialog — and resolve with `'granted'` all the same.
 
 > **`signal` / `timeout` on the active getters stop the _wait_, not the native prompt.** Aborting or timing out rejects the returned promise, but the browser cannot cancel a dialog it already surfaced: the prompt stays open and a late grant is reflected only in the live permission state (e.g. via `checkPermission`), not in the rejected promise. The one exception is `getCameraPermission` / `getMicrophonePermission`, which forward the signal into `getUserMediaStream` and tear the acquired stream down so the camera/microphone is never left active.
 
