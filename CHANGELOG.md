@@ -1,3 +1,10 @@
+# [2.0.0-beta.10](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.9...v2.0.0-beta.10) (2026-06-12)
+
+
+### Bug Fixes
+
+* Surface the prompt when a permission name is not queryable (Firefox/Safari) ([#148](https://github.com/untemps/user-permissions-utils/issues/148)) ([67aa4a5](https://github.com/untemps/user-permissions-utils/commit/67aa4a581181850387385f8389b470be2be717fb))
+
 # [2.0.0-beta.9](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.8...v2.0.0-beta.9) (2026-06-11)
 
 
