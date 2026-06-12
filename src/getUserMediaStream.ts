@@ -23,9 +23,20 @@ const getUserMediaStream = async (
 
 	signal?.throwIfAborted()
 
-	const permissionStatus = await navigator.permissions.query({ name: permissionName })
+	// `query()` only lets us short-circuit a prior denial. Browsers that support the device but not
+	// querying its permission name (Firefox/Safari: `camera`/`microphone`) throw a `TypeError` here —
+	// fall through to `getUserMedia`, the real authority, which surfaces the prompt or rejects on its
+	// own. Any other query error propagates unchanged.
+	let denied = false
+	try {
+		denied = (await navigator.permissions.query({ name: permissionName })).state === 'denied'
+	} catch (error) {
+		if (!(error instanceof TypeError)) {
+			throw error
+		}
+	}
 
-	if (permissionStatus.state === 'denied') {
+	if (denied) {
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
 
