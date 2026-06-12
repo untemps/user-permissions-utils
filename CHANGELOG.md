@@ -1,3 +1,10 @@
+# [2.0.0-beta.18](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.17...v2.0.0-beta.18) (2026-06-12)
+
+
+### Features
+
+* Add an optional timeout to getUserMediaStream ([#166](https://github.com/untemps/user-permissions-utils/issues/166)) ([557978c](https://github.com/untemps/user-permissions-utils/commit/557978c90db06122c53ef6febabdb36c29b9877d))
+
 # [2.0.0-beta.17](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.16...v2.0.0-beta.17) (2026-06-12)
 
 # [2.0.0-beta.16](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.15...v2.0.0-beta.16) (2026-06-12)
