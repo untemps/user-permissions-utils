@@ -21,6 +21,10 @@ export interface WatchPermissionOptions {
  * the subscription is active is a silent teardown — the returned promise has already resolved, so it
  * is not rejected; only an abort *before* the subscription is active rejects with `AbortError`.
  *
+ * If the upfront emit throws (a consumer `onChange` that rejects synchronously), the `change` and
+ * abort listeners are removed before the returned promise rejects, so a throwing emit never leaves a
+ * zombie subscription behind.
+ *
  * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param onChange                  Called with the permission state on each transition (and once upfront unless `emitImmediately` is `false`)
  * @param options                   Optional settings
@@ -49,11 +53,20 @@ const watchPermission = async (
 	// regardless of order — subscribing first is defensive, covering only a transition that `onChange`
 	// itself might trigger. The abort listener removes the `change` listener on teardown (no leak).
 	const listener = () => onChange(permissionStatus.state)
+	const onAbort = () => permissionStatus.removeEventListener('change', listener)
 	permissionStatus.addEventListener('change', listener)
-	signal?.addEventListener('abort', () => permissionStatus.removeEventListener('change', listener), { once: true })
+	signal?.addEventListener('abort', onAbort, { once: true })
 
 	if (emitImmediately) {
-		onChange(permissionStatus.state)
+		try {
+			onChange(permissionStatus.state)
+		} catch (error) {
+			// The `change` listener is already registered; tear it (and the abort listener) down before
+			// rejecting so a throwing upfront emit never leaves a zombie subscription behind.
+			permissionStatus.removeEventListener('change', listener)
+			signal?.removeEventListener('abort', onAbort)
+			throw error
+		}
 	}
 }
 

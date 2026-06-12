@@ -96,6 +96,52 @@ describe('watchPermission', () => {
 			await expect(watchPermission('microphone', vi.fn())).rejects.toEqual(new Error('ERR'))
 		})
 
+		describe('when the upfront emit throws', () => {
+			it('removes the change listener before rejecting so no subscription is left behind', async () => {
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
+				status.state = 'prompt'
+				const removeEventListenerSpy = vi.spyOn(status, 'removeEventListener')
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				const error = new Error('boom')
+				const onChange = vi.fn(() => {
+					throw error
+				})
+
+				await expect(watchPermission('microphone', onChange)).rejects.toBe(error)
+				expect(removeEventListenerSpy).toHaveBeenCalledWith('change', expect.any(Function))
+
+				// A later change must not reach the now-removed listener
+				onChange.mockReset()
+				status.state = 'granted'
+				status.dispatchEvent(new Event('change'))
+				expect(onChange).not.toHaveBeenCalled()
+			})
+
+			it('removes the abort listener too so a later abort triggers no further teardown', async () => {
+				const controller = new AbortController()
+				const status = new PermissionStatus() as unknown as MockPermissionStatus
+				status.state = 'prompt'
+				const removeEventListenerSpy = vi.spyOn(status, 'removeEventListener')
+				mockPermissionsQuery.mockResolvedValueOnce(status)
+
+				const onChange = vi.fn(() => {
+					throw new Error('boom')
+				})
+
+				await expect(watchPermission('microphone', onChange, { signal: controller.signal })).rejects.toThrow(
+					'boom'
+				)
+
+				// Teardown ran exactly once (the upfront-throw path), removing the change listener
+				expect(removeEventListenerSpy).toHaveBeenCalledTimes(1)
+
+				// Aborting afterwards must not fire the abort handler again (it was unsubscribed)
+				controller.abort()
+				expect(removeEventListenerSpy).toHaveBeenCalledTimes(1)
+			})
+		})
+
 		describe('AbortSignal', () => {
 			it('rejects immediately when signal is already aborted and never queries', async () => {
 				const controller = new AbortController()
