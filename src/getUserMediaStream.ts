@@ -38,11 +38,11 @@ const getUserMediaStream = async (
 		}
 	}
 
+	signal?.throwIfAborted()
+
 	if (denied) {
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
-
-	signal?.throwIfAborted()
 
 	// The `getUserMedia` call (and its abort teardown) lives in `acquireMediaStream`, which the
 	// camera/microphone triggers reuse directly so the active getters never re-query the permission.
