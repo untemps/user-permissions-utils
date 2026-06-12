@@ -96,10 +96,19 @@ function initSupportStatus(apis: ApiSupport[]): void {
 		const ok = api.supported()
 		const row = document.createElement('div')
 		row.className = 'support-row'
-		row.innerHTML =
-			`<div class="dot ${ok ? 'supported' : 'unsupported'}"></div>` +
-			`<span class="support-label">${api.label}</span>` +
-			`<span class="support-value">${ok ? 'supported' : 'not supported'}</span>`
+
+		const dot = document.createElement('div')
+		dot.className = `dot ${ok ? 'supported' : 'unsupported'}`
+
+		const label = document.createElement('span')
+		label.className = 'support-label'
+		label.textContent = api.label
+
+		const value = document.createElement('span')
+		value.className = 'support-value'
+		value.textContent = ok ? 'supported' : 'not supported'
+
+		row.append(dot, label, value)
 		container.append(row)
 	})
 }
@@ -109,10 +118,21 @@ function initPermissionStates(entries: PermissionEntry[]): void {
 	entries.forEach((entry) => {
 		const row = document.createElement('div')
 		row.className = 'support-row'
-		row.innerHTML =
-			`<div class="dot" id="dot-permission-${entry.name}"></div>` +
-			`<span class="support-label">${entry.name}</span>` +
-			`<span class="support-value" id="permission-${entry.name}">—</span>`
+
+		const dot = document.createElement('div')
+		dot.className = 'dot'
+		dot.id = `dot-permission-${entry.name}`
+
+		const label = document.createElement('span')
+		label.className = 'support-label'
+		label.textContent = entry.name
+
+		const value = document.createElement('span')
+		value.className = 'support-value'
+		value.id = `permission-${entry.name}`
+		value.textContent = '—'
+
+		row.append(dot, label, value)
 		container.append(row)
 
 		watchPermissionState(entry.name)
@@ -153,8 +173,18 @@ function initDedicatedGetters(entries: PermissionEntry[]): void {
 	entries.forEach((entry) => {
 		const row = document.createElement('div')
 		row.className = 'getter-row'
-		row.innerHTML = `<button type="button">${entry.name}</button><span class="result" id="getter-result-${entry.name}">—</span>`
-		row.querySelector('button')!.addEventListener('click', () => handleGetPermission(entry))
+
+		const button = document.createElement('button')
+		button.type = 'button'
+		button.textContent = entry.name
+		button.addEventListener('click', () => handleGetPermission(entry))
+
+		const result = document.createElement('span')
+		result.className = 'result'
+		result.id = `getter-result-${entry.name}`
+		result.textContent = '—'
+
+		row.append(button, result)
 		container.append(row)
 	})
 }
@@ -245,7 +275,16 @@ function log(message: string, type = ''): void {
 	const time = new Date().toLocaleTimeString()
 	const entry = document.createElement('div')
 	entry.className = `log-entry${type ? ` ${type}` : ''}`
-	entry.innerHTML = `<span class="time">${time}</span><span class="msg">${message}</span>`
+
+	const timeEl = document.createElement('span')
+	timeEl.className = 'time'
+	timeEl.textContent = time
+
+	const msgEl = document.createElement('span')
+	msgEl.className = 'msg'
+	msgEl.textContent = message
+
+	entry.append(timeEl, msgEl)
 	logEl.append(entry)
 	logEl.scrollTop = logEl.scrollHeight
 }
