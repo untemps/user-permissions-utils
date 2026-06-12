@@ -1,4 +1,4 @@
-import getUserMediaStream from './getUserMediaStream'
+import acquireMediaStream from './_acquireMediaStream'
 import type { PermissionTrigger } from './_acquirePermission'
 
 const permissionDenied = (): DOMException => new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
@@ -14,13 +14,13 @@ const stopTracks = (stream: MediaStream): void => {
 
 // Native calls that surface each permission's dialog, normalised to resolve only on grant and reject
 // with a `DOMException` (`NOT_ALLOWED_ERR` denied, `NOT_SUPPORTED_ERR` absent) so `acquirePermission`
-// treats them identically. camera/microphone delegate to `getUserMediaStream`.
+// treats them identically. camera/microphone delegate to `acquireMediaStream` (the `getUserMedia` core
+// of `getUserMediaStream`, minus the permission query `acquirePermission` has already performed).
 
-export const cameraTrigger: PermissionTrigger = (signal) =>
-	getUserMediaStream('camera', { video: true }, { signal }).then(stopTracks)
+export const cameraTrigger: PermissionTrigger = (signal) => acquireMediaStream({ video: true }, signal).then(stopTracks)
 
 export const microphoneTrigger: PermissionTrigger = (signal) =>
-	getUserMediaStream('microphone', { audio: true }, { signal }).then(stopTracks)
+	acquireMediaStream({ audio: true }, signal).then(stopTracks)
 
 export const geolocationTrigger: PermissionTrigger = () =>
 	new Promise<void>((resolve, reject) => {
