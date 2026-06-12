@@ -171,7 +171,7 @@ const init = async () => {
 }
 ```
 
-The subscription lives until the optional `signal` aborts, at which point the `change` listener is removed. Omit the `signal` for a watch that lasts the page's lifetime.
+The subscription lives until the optional `signal` aborts, at which point the `change` listener is removed. Omit the `signal` for a watch that lasts the page's lifetime. If your `onChange` throws on the upfront emit, the returned promise rejects and the `change` listener is removed first, so a throwing emit never leaves a subscription behind.
 
 ```javascript
 import { watchPermission } from '@untemps/user-permissions-utils'
