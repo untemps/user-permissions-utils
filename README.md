@@ -188,7 +188,7 @@ controller.abort()
 
 `getUserMediaStream`:
 
-Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation. If the signal aborts while acquisition is still in flight, a stream that resolves afterwards is torn down automatically (its tracks are stopped), so the camera or microphone is never left active.
+Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation and an optional `timeout` (in milliseconds) that rejects with a `TimeoutError` once it elapses — the same bounded-wait ergonomics the active getters offer, handy for unattended flows. If the signal aborts or the timeout fires while acquisition is still in flight, a stream that resolves afterwards is torn down automatically (its tracks are stopped), so the camera or microphone is never left active.
 
 The `permissionName` and `mediaStreamConstraints` must match the same media device:
 
@@ -244,6 +244,23 @@ const init = async () => {
 
 // Cancel the operation at any point (permission wait or stream acquisition)
 controller.abort()
+```
+
+To time-box an unattended acquisition without wiring your own `AbortController` and timer, pass a `timeout` (it can be combined with a `signal`):
+
+```javascript
+import { getUserMediaStream } from '@untemps/user-permissions-utils'
+
+const init = async () => {
+    try {
+        // Reject with a `TimeoutError` if the stream isn't acquired within 10s
+        const stream = await getUserMediaStream('camera', { video: true }, { timeout: 10000 })
+        ...
+    } catch (error) {
+        if (error.name === 'TimeoutError') return // no response in time — the camera is never left active
+        console.error(error)
+    }
+}
 ```
 
 > **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable — the Permissions API (all functions), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
