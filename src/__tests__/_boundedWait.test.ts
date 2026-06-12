@@ -30,7 +30,7 @@ describe('boundedWait', () => {
 		})
 
 		it('rejects with the producer reason', async () => {
-			const reason = new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+			const reason = new DOMException('Permission denied', 'NotAllowedError')
 			const promise = boundedWait<string>({}, ({ reject }) => {
 				Promise.resolve().then(() => reject(reason))
 				return () => {}
