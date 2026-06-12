@@ -1,3 +1,10 @@
+# [2.0.0-beta.12](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.11...v2.0.0-beta.12) (2026-06-12)
+
+
+### Bug Fixes
+
+* Honour an abort before the denied check in getUserMediaStream ([#150](https://github.com/untemps/user-permissions-utils/issues/150)) ([66a406c](https://github.com/untemps/user-permissions-utils/commit/66a406cb760580486305460f5ab104bf491e0a9c))
+
 # [2.0.0-beta.11](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.10...v2.0.0-beta.11) (2026-06-12)
 
 
