@@ -31,7 +31,7 @@ export interface WatchPermissionOptions {
  * @param options.signal            Optional AbortSignal that stops the subscription (removes the `change` listener); aborting before the subscription is active rejects with `AbortError` instead
  * @param options.emitImmediately   When `true` (default), invokes `onChange` with the current state before listening for changes
  * @returns A promise resolved once the subscription is active
- * @throws {DOMException} `NOT_SUPPORTED_ERR` when the Permissions API is unavailable, or `AbortError` when `signal` is already aborted before the subscription is active
+ * @throws {DOMException} `NotSupportedError` when the Permissions API is unavailable, or `AbortError` when `signal` is already aborted before the subscription is active
  */
 const watchPermission = async (
 	permissionName: PermissionName,
@@ -39,7 +39,7 @@ const watchPermission = async (
 	{ signal, emitImmediately = true }: WatchPermissionOptions = {}
 ): Promise<void> => {
 	if (!navigator.permissions) {
-		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
+		throw new DOMException('Navigator API: permissions not supported', 'NotSupportedError')
 	}
 
 	signal?.throwIfAborted()

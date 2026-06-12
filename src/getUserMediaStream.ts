@@ -19,7 +19,7 @@ const getUserMediaStream = async (
 	if (!navigator.permissions || !navigator.mediaDevices) {
 		throw new DOMException(
 			'Navigator API: permissions or Navigator API: mediaDevices not supported',
-			'NOT_SUPPORTED_ERR'
+			'NotSupportedError'
 		)
 	}
 
@@ -41,7 +41,7 @@ const getUserMediaStream = async (
 	signal?.throwIfAborted()
 
 	if (denied) {
-		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+		throw new DOMException('Permission denied', 'NotAllowedError')
 	}
 
 	// The `getUserMedia` call (and its abort teardown) lives in `acquireMediaStream`, which the

@@ -5,7 +5,7 @@
  */
 const checkPermission = async (permissionName: PermissionName): Promise<PermissionState> => {
 	if (!navigator.permissions) {
-		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
+		throw new DOMException('Navigator API: permissions not supported', 'NotSupportedError')
 	}
 
 	const { state } = await navigator.permissions.query({ name: permissionName })

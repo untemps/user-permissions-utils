@@ -2,8 +2,8 @@ import boundedWait from './_boundedWait'
 import type { GetPermissionOptions } from './getPermission'
 
 // A native call that surfaces a permission's real dialog. It must resolve **only** once the
-// permission is granted and reject with a `DOMException` otherwise (`NOT_ALLOWED_ERR` on
-// denial/dismissal, `NOT_SUPPORTED_ERR` when its native API is absent), so `acquirePermission` can
+// permission is granted and reject with a `DOMException` otherwise (`NotAllowedError` on
+// denial/dismissal, `NotSupportedError` when its native API is absent), so `acquirePermission` can
 // treat every permission identically.
 export type PermissionTrigger = (signal?: AbortSignal) => Promise<unknown>
 
@@ -22,7 +22,7 @@ export type PermissionTrigger = (signal?: AbortSignal) => Promise<unknown>
  * @param options.signal    Optional AbortSignal to cancel the pending acquisition
  * @param options.timeout   Optional timeout in milliseconds; rejects with a `TimeoutError`
  * @returns A promise resolved with `'granted'`
- * @throws {DOMException} `NOT_SUPPORTED_ERR`, `NOT_ALLOWED_ERR` (denied) or `TimeoutError`
+ * @throws {DOMException} `NotSupportedError`, `NotAllowedError` (denied) or `TimeoutError`
  */
 const acquirePermission = async (
 	permissionName: PermissionName,
@@ -30,7 +30,7 @@ const acquirePermission = async (
 	{ signal, timeout }: GetPermissionOptions = {}
 ): Promise<'granted'> => {
 	if (!navigator.permissions) {
-		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
+		throw new DOMException('Navigator API: permissions not supported', 'NotSupportedError')
 	}
 
 	signal?.throwIfAborted()
@@ -53,7 +53,7 @@ const acquirePermission = async (
 		return 'granted'
 	}
 	if (state === 'denied') {
-		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+		throw new DOMException('Permission denied', 'NotAllowedError')
 	}
 
 	// 'prompt' → fire the trigger to surface the real dialog, bounded by the merged signal/timeout.

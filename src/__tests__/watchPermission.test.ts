@@ -15,7 +15,7 @@ describe('watchPermission', () => {
 		it('rejects promise', async () => {
 			await expect(watchPermission('microphone', vi.fn())).rejects.toMatchObject({
 				message: 'Navigator API: permissions not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 		})
 	})

@@ -50,10 +50,10 @@ describe('dedicated permission getters', () => {
 		beforeAll(() => setNavigatorApiUnsupported('permissions'))
 		afterAll(() => restoreNavigatorApi('permissions'))
 
-		it.each(getters)('$label rejects with NOT_SUPPORTED_ERR', async ({ getter }) => {
+		it.each(getters)('$label rejects with NotSupportedError', async ({ getter }) => {
 			await expect(getter()).rejects.toMatchObject({
 				message: 'Navigator API: permissions not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 		})
 	})

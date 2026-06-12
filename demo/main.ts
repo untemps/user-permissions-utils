@@ -70,10 +70,9 @@ const APIS: ApiSupport[] = [
 ]
 
 // Friendly copy for the DOMException names the flow can surface, so logs read in plain language
-// instead of raw codes like "NOT_ALLOWED_ERR".
+// instead of raw names like "NotSupportedError".
 const FRIENDLY_ERRORS: Record<string, string> = {
 	NotSupportedError: 'not supported in this browser',
-	NOT_SUPPORTED_ERR: 'not supported in this browser',
 	SecurityError: 'blocked by the browser',
 	TypeError: 'not queryable in this browser',
 }
@@ -192,7 +191,6 @@ async function handleGetPermission(entry: PermissionEntry): Promise<void> {
 function errorToOutcome(err: DOMException): Outcome {
 	switch (err.name) {
 		case 'NotAllowedError':
-		case 'NOT_ALLOWED_ERR':
 			return { kind: 'denied' }
 		case 'TimeoutError':
 			return { kind: 'timeout' }

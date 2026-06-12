@@ -19,11 +19,11 @@ describe('acquirePermission', () => {
 		beforeAll(() => setNavigatorApiUnsupported('permissions'))
 		afterAll(() => restoreNavigatorApi('permissions'))
 
-		it('rejects with NOT_SUPPORTED_ERR without firing the trigger', async () => {
+		it('rejects with NotSupportedError without firing the trigger', async () => {
 			const trigger = vi.fn()
 			await expect(acquirePermission('camera', trigger)).rejects.toMatchObject({
 				message: 'Navigator API: permissions not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 			expect(trigger).not.toHaveBeenCalled()
 		})
@@ -45,13 +45,13 @@ describe('acquirePermission', () => {
 			expect(trigger).not.toHaveBeenCalled()
 		})
 
-		it('rejects with NOT_ALLOWED_ERR without firing the trigger when already denied', async () => {
+		it('rejects with NotAllowedError without firing the trigger when already denied', async () => {
 			mockPermissionsQuery.mockResolvedValueOnce(statusOf('denied'))
 			const trigger = vi.fn()
 
 			await expect(acquirePermission('camera', trigger)).rejects.toMatchObject({
 				message: 'Permission denied',
-				name: 'NOT_ALLOWED_ERR',
+				name: 'NotAllowedError',
 			})
 			expect(trigger).not.toHaveBeenCalled()
 		})
@@ -68,10 +68,10 @@ describe('acquirePermission', () => {
 
 		it('rejects with the trigger error on "prompt" when it rejects', async () => {
 			mockPermissionsQuery.mockResolvedValueOnce(statusOf('prompt'))
-			const trigger = vi.fn().mockRejectedValueOnce(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+			const trigger = vi.fn().mockRejectedValueOnce(new DOMException('Permission denied', 'NotAllowedError'))
 
 			await expect(acquirePermission('geolocation', trigger)).rejects.toMatchObject({
-				name: 'NOT_ALLOWED_ERR',
+				name: 'NotAllowedError',
 			})
 		})
 
