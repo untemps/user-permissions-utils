@@ -16,7 +16,7 @@ describe('getPermission', () => {
 		it('rejects promise', async () => {
 			await expect(getPermission('microphone')).rejects.toMatchObject({
 				message: 'Navigator API: permissions not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 		})
 	})
@@ -34,7 +34,7 @@ describe('getPermission', () => {
 			mockPermissionsQuery.mockResolvedValueOnce(status)
 			await expect(getPermission('microphone')).rejects.toMatchObject({
 				message: 'Permission denied',
-				name: 'NOT_ALLOWED_ERR',
+				name: 'NotAllowedError',
 			})
 		})
 
@@ -53,7 +53,7 @@ describe('getPermission', () => {
 			const promise = getPermission('microphone', { timeout: 1000 })
 			const expectation = expect(promise).rejects.toMatchObject({
 				message: 'Permission denied',
-				name: 'NOT_ALLOWED_ERR',
+				name: 'NotAllowedError',
 			})
 			await flushMicrotasks()
 			status.state = 'denied'

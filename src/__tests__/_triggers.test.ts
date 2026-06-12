@@ -62,9 +62,9 @@ describe('permission triggers', () => {
 		})
 
 		it('propagates an acquireMediaStream rejection (denial)', async () => {
-			mockAcquireMediaStream.mockRejectedValueOnce(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+			mockAcquireMediaStream.mockRejectedValueOnce(new DOMException('Permission denied', 'NotAllowedError'))
 
-			await expect(cameraTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
+			await expect(cameraTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 	})
 
@@ -77,13 +77,13 @@ describe('permission triggers', () => {
 			await expect(geolocationTrigger()).resolves.toBeUndefined()
 		})
 
-		it('rejects with NOT_ALLOWED_ERR when permission is denied', async () => {
+		it('rejects with NotAllowedError when permission is denied', async () => {
 			stub(navigator, 'geolocation', {
 				getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) =>
 					error({ code: 1, PERMISSION_DENIED: 1 } as GeolocationPositionError),
 			})
 
-			await expect(geolocationTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
+			await expect(geolocationTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 
 		it('propagates other geolocation failures (position unavailable)', async () => {
@@ -95,10 +95,10 @@ describe('permission triggers', () => {
 			await expect(geolocationTrigger()).rejects.toBe(positionError)
 		})
 
-		it('rejects with NOT_SUPPORTED_ERR when the Geolocation API is absent', async () => {
+		it('rejects with NotSupportedError when the Geolocation API is absent', async () => {
 			stub(navigator, 'geolocation', undefined)
 
-			await expect(geolocationTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+			await expect(geolocationTrigger()).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 	})
 
@@ -109,16 +109,16 @@ describe('permission triggers', () => {
 			await expect(notificationsTrigger()).resolves.toBeUndefined()
 		})
 
-		it('rejects with NOT_ALLOWED_ERR when permission is not granted', async () => {
+		it('rejects with NotAllowedError when permission is not granted', async () => {
 			stub(globalThis, 'Notification', { requestPermission: () => Promise.resolve('denied') })
 
-			await expect(notificationsTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
+			await expect(notificationsTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 
-		it('rejects with NOT_SUPPORTED_ERR when the Notification API is absent', async () => {
+		it('rejects with NotSupportedError when the Notification API is absent', async () => {
 			stub(globalThis, 'Notification', undefined)
 
-			await expect(notificationsTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+			await expect(notificationsTrigger()).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 	})
 
@@ -137,10 +137,10 @@ describe('permission triggers', () => {
 			await expect(midiTrigger()).rejects.toMatchObject({ name: 'SecurityError' })
 		})
 
-		it('rejects with NOT_SUPPORTED_ERR when the Web MIDI API is absent', async () => {
+		it('rejects with NotSupportedError when the Web MIDI API is absent', async () => {
 			stub(navigator, 'requestMIDIAccess', undefined)
 
-			await expect(midiTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+			await expect(midiTrigger()).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 	})
 
@@ -151,16 +151,16 @@ describe('permission triggers', () => {
 			await expect(persistentStorageTrigger()).resolves.toBeUndefined()
 		})
 
-		it('rejects with NOT_ALLOWED_ERR when persistence is refused', async () => {
+		it('rejects with NotAllowedError when persistence is refused', async () => {
 			stub(navigator, 'storage', { persist: () => Promise.resolve(false) })
 
-			await expect(persistentStorageTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
+			await expect(persistentStorageTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 
-		it('rejects with NOT_SUPPORTED_ERR when the StorageManager API is absent', async () => {
+		it('rejects with NotSupportedError when the StorageManager API is absent', async () => {
 			stub(navigator, 'storage', undefined)
 
-			await expect(persistentStorageTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+			await expect(persistentStorageTrigger()).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 	})
 
@@ -183,10 +183,10 @@ describe('permission triggers', () => {
 			await expect(screenWakeLockTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 
-		it('rejects with NOT_SUPPORTED_ERR when the Screen Wake Lock API is absent', async () => {
+		it('rejects with NotSupportedError when the Screen Wake Lock API is absent', async () => {
 			stub(navigator, 'wakeLock', undefined)
 
-			await expect(screenWakeLockTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+			await expect(screenWakeLockTrigger()).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 	})
 
@@ -203,10 +203,10 @@ describe('permission triggers', () => {
 			await expect(storageAccessTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 
-		it('rejects with NOT_SUPPORTED_ERR when the Storage Access API is absent', async () => {
+		it('rejects with NotSupportedError when the Storage Access API is absent', async () => {
 			stub(document, 'requestStorageAccess', undefined)
 
-			await expect(storageAccessTrigger()).rejects.toMatchObject({ name: 'NOT_SUPPORTED_ERR' })
+			await expect(storageAccessTrigger()).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 	})
 })

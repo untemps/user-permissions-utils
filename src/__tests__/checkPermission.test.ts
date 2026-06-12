@@ -15,7 +15,7 @@ describe('checkPermission', () => {
 		it('rejects promise', async () => {
 			await expect(checkPermission('microphone')).rejects.toMatchObject({
 				message: 'Navigator API: permissions not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 		})
 	})
