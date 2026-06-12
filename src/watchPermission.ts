@@ -48,10 +48,6 @@ const watchPermission = async (
 
 	signal?.throwIfAborted()
 
-	// Register the `change` listener before the upfront emit. There is no async gap between
-	// `query()` resolving and this synchronous block, so the browser can't slip a `change` event in
-	// regardless of order — subscribing first is defensive, covering only a transition that `onChange`
-	// itself might trigger. The abort listener removes the `change` listener on teardown (no leak).
 	const listener = () => onChange(permissionStatus.state)
 	const onAbort = () => permissionStatus.removeEventListener('change', listener)
 	permissionStatus.addEventListener('change', listener)
@@ -61,8 +57,6 @@ const watchPermission = async (
 		try {
 			onChange(permissionStatus.state)
 		} catch (error) {
-			// The `change` listener is already registered; tear it (and the abort listener) down before
-			// rejecting so a throwing upfront emit never leaves a zombie subscription behind.
 			permissionStatus.removeEventListener('change', listener)
 			signal?.removeEventListener('abort', onAbort)
 			throw error
