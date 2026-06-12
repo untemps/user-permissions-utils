@@ -86,13 +86,53 @@ describe('permission triggers', () => {
 			await expect(geolocationTrigger()).rejects.toMatchObject({ name: 'NotAllowedError' })
 		})
 
-		it('propagates other geolocation failures (position unavailable)', async () => {
-			const positionError = { code: 2, PERMISSION_DENIED: 1 } as GeolocationPositionError
+		it('wraps POSITION_UNAVAILABLE in a NotReadableError DOMException, preserving the cause', async () => {
+			const positionError = {
+				code: 2,
+				message: 'unavailable',
+				PERMISSION_DENIED: 1,
+				TIMEOUT: 3,
+			} as GeolocationPositionError
 			stub(navigator, 'geolocation', {
 				getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => error(positionError),
 			})
 
-			await expect(geolocationTrigger()).rejects.toBe(positionError)
+			await expect(geolocationTrigger()).rejects.toBeInstanceOf(DOMException)
+			await expect(geolocationTrigger()).rejects.toMatchObject({
+				name: 'NotReadableError',
+				message: 'unavailable',
+				cause: positionError,
+			})
+		})
+
+		it('falls back to a default message when the native error has none', async () => {
+			const positionError = { code: 2, message: '', PERMISSION_DENIED: 1, TIMEOUT: 3 } as GeolocationPositionError
+			stub(navigator, 'geolocation', {
+				getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => error(positionError),
+			})
+
+			await expect(geolocationTrigger()).rejects.toMatchObject({
+				name: 'NotReadableError',
+				message: 'Geolocation unavailable',
+			})
+		})
+
+		it('wraps TIMEOUT in a TimeoutError DOMException, preserving the cause', async () => {
+			const positionError = {
+				code: 3,
+				message: 'timed out',
+				PERMISSION_DENIED: 1,
+				TIMEOUT: 3,
+			} as GeolocationPositionError
+			stub(navigator, 'geolocation', {
+				getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) => error(positionError),
+			})
+
+			await expect(geolocationTrigger()).rejects.toMatchObject({
+				name: 'TimeoutError',
+				message: 'timed out',
+				cause: positionError,
+			})
 		})
 
 		it('rejects with NotSupportedError when the Geolocation API is absent', async () => {
