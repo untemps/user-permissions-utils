@@ -8,6 +8,15 @@ const permissionDenied = (): DOMException => new DOMException('Permission denied
 // `TypeError` from `undefined.someMethod()`.
 const notSupported = (api: string): DOMException => new DOMException(`${api} not supported`, 'NotSupportedError')
 
+const geolocationFailed = (error: GeolocationPositionError): DOMException =>
+	Object.assign(
+		new DOMException(
+			error.message || 'Geolocation unavailable',
+			error.code === error.TIMEOUT ? 'TimeoutError' : 'NotReadableError'
+		),
+		{ cause: error }
+	)
+
 const stopTracks = (stream: MediaStream): void => {
 	stream.getTracks().forEach((track) => track.stop())
 }
@@ -30,8 +39,7 @@ export const geolocationTrigger: PermissionTrigger = () =>
 		}
 		navigator.geolocation.getCurrentPosition(
 			() => resolve(),
-			// Only PERMISSION_DENIED is a denial; POSITION_UNAVAILABLE/TIMEOUT propagate as-is.
-			(error) => reject(error.code === error.PERMISSION_DENIED ? permissionDenied() : error)
+			(error) => reject(error.code === error.PERMISSION_DENIED ? permissionDenied() : geolocationFailed(error))
 		)
 	})
 
