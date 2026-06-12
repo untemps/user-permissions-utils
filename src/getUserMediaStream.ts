@@ -1,7 +1,9 @@
 import acquireMediaStream from './_acquireMediaStream'
+import boundedWait from './_boundedWait'
 
 export interface GetUserMediaStreamOptions {
 	signal?: AbortSignal
+	timeout?: number
 }
 
 /**
@@ -10,11 +12,12 @@ export interface GetUserMediaStreamOptions {
  * @param mediaStreamConstraints    Constraints object. @see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints
  * @param options                   Optional settings
  * @param options.signal            Optional AbortSignal to cancel the operation
+ * @param options.timeout           Optional timeout in milliseconds; rejects with a `TimeoutError`
  */
 const getUserMediaStream = async (
 	permissionName: PermissionName,
 	mediaStreamConstraints: MediaStreamConstraints,
-	{ signal }: GetUserMediaStreamOptions = {}
+	{ signal, timeout }: GetUserMediaStreamOptions = {}
 ): Promise<MediaStream> => {
 	if (!navigator.permissions || !navigator.mediaDevices) {
 		throw new DOMException(
@@ -46,7 +49,14 @@ const getUserMediaStream = async (
 
 	// The `getUserMedia` call (and its abort teardown) lives in `acquireMediaStream`, which the
 	// camera/microphone triggers reuse directly so the active getters never re-query the permission.
-	return acquireMediaStream(mediaStreamConstraints, signal)
+	if (timeout === undefined) {
+		return acquireMediaStream(mediaStreamConstraints, signal)
+	}
+
+	return boundedWait<MediaStream>({ signal, timeout }, ({ signal: waitSignal, resolve, reject }) => {
+		acquireMediaStream(mediaStreamConstraints, waitSignal).then(resolve, reject)
+		return () => {}
+	})
 }
 
 export default getUserMediaStream
