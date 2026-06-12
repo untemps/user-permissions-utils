@@ -1,6 +1,6 @@
-vi.mock('../getUserMediaStream', () => ({ default: vi.fn() }))
+vi.mock('../_acquireMediaStream', () => ({ default: vi.fn() }))
 
-import getUserMediaStream from '../getUserMediaStream'
+import acquireMediaStream from '../_acquireMediaStream'
 import {
 	cameraTrigger,
 	microphoneTrigger,
@@ -12,7 +12,7 @@ import {
 	storageAccessTrigger,
 } from '../_triggers'
 
-const mockGetUserMediaStream = vi.mocked(getUserMediaStream)
+const mockAcquireMediaStream = vi.mocked(acquireMediaStream)
 
 // Stub a property on a host object (navigator/document/globalThis) and restore it afterwards.
 // `defineProperty` shadows even inherited accessors that plain assignment cannot overwrite.
@@ -44,25 +44,25 @@ describe('permission triggers', () => {
 	describe('cameraTrigger / microphoneTrigger', () => {
 		it('cameraTrigger acquires a camera stream (forwarding the signal) and stops its tracks', async () => {
 			const stop = vi.fn()
-			mockGetUserMediaStream.mockResolvedValueOnce(streamWith(stop))
+			mockAcquireMediaStream.mockResolvedValueOnce(streamWith(stop))
 			const { signal } = new AbortController()
 
 			await expect(cameraTrigger(signal)).resolves.toBeUndefined()
-			expect(mockGetUserMediaStream).toHaveBeenCalledWith('camera', { video: true }, { signal })
+			expect(mockAcquireMediaStream).toHaveBeenCalledWith({ video: true }, signal)
 			expect(stop).toHaveBeenCalledOnce()
 		})
 
 		it('microphoneTrigger acquires a microphone stream and stops its tracks', async () => {
 			const stop = vi.fn()
-			mockGetUserMediaStream.mockResolvedValueOnce(streamWith(stop))
+			mockAcquireMediaStream.mockResolvedValueOnce(streamWith(stop))
 
 			await expect(microphoneTrigger()).resolves.toBeUndefined()
-			expect(mockGetUserMediaStream).toHaveBeenCalledWith('microphone', { audio: true }, { signal: undefined })
+			expect(mockAcquireMediaStream).toHaveBeenCalledWith({ audio: true }, undefined)
 			expect(stop).toHaveBeenCalledOnce()
 		})
 
-		it('propagates a getUserMediaStream rejection (denial)', async () => {
-			mockGetUserMediaStream.mockRejectedValueOnce(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+		it('propagates an acquireMediaStream rejection (denial)', async () => {
+			mockAcquireMediaStream.mockRejectedValueOnce(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
 
 			await expect(cameraTrigger()).rejects.toMatchObject({ name: 'NOT_ALLOWED_ERR' })
 		})
