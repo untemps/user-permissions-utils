@@ -3,6 +3,7 @@ vi.mock('../_acquireMediaStream', () => ({ default: vi.fn() }))
 import getUserMediaStream from '../getUserMediaStream'
 import acquireMediaStream from '../_acquireMediaStream'
 import {
+	flushMicrotasks,
 	setNavigatorApiUnsupported,
 	restoreNavigatorApi,
 	setupPermissionsMock,
@@ -14,6 +15,12 @@ import {
 
 const FAKE_STREAM = {} as MediaStream
 const mockAcquireMediaStream = vi.mocked(acquireMediaStream)
+
+const statusOf = (state: PermissionState): MockPermissionStatus => {
+	const status = new PermissionStatus() as unknown as MockPermissionStatus
+	status.state = state
+	return status
+}
 
 // `getUserMediaStream` owns the guard + permission query (denied short-circuit, TypeError
 // fall-through) and then delegates the actual `getUserMedia` call — including the abort teardown — to
@@ -196,6 +203,86 @@ describe('getUserMediaStream', () => {
 						getUserMediaStream('camera', { video: true }, { signal: controller.signal })
 					).resolves.toBe(FAKE_STREAM)
 					expect(mockAcquireMediaStream).toHaveBeenCalledWith({ video: true }, controller.signal)
+				})
+			})
+
+			// A `timeout` is merged with any caller `signal` into one internal AbortSignal (via
+			// `boundedWait`) that is forwarded to `acquireMediaStream`, so a stream resolving after the
+			// deadline is still torn down. The merge/teardown mechanics live in the `_boundedWait` and
+			// `_acquireMediaStream` suites; here we assert `getUserMediaStream` wires the timeout through.
+			describe('timeout', () => {
+				it('forwards a merged signal (not the raw caller signal) to acquireMediaStream', async () => {
+					mockPermissionsQuery.mockResolvedValueOnce(statusOf('granted'))
+					mockAcquireMediaStream.mockResolvedValueOnce(FAKE_STREAM)
+
+					await expect(getUserMediaStream('camera', { video: true }, { timeout: 1000 })).resolves.toBe(
+						FAKE_STREAM
+					)
+					expect(mockAcquireMediaStream.mock.calls[0][0]).toEqual({ video: true })
+					// Not the raw signal (there is none) — a fresh internal signal carrying the timeout.
+					expect(mockAcquireMediaStream.mock.calls[0][1]).toBeInstanceOf(AbortSignal)
+				})
+
+				it('rejects with TimeoutError when the timeout elapses before acquisition settles', async () => {
+					vi.useFakeTimers()
+					try {
+						mockPermissionsQuery.mockResolvedValueOnce(statusOf('prompt'))
+						// Never settles on its own: only the timeout can settle the acquisition.
+						let forwardedSignal: AbortSignal | undefined
+						mockAcquireMediaStream.mockImplementationOnce((_constraints, signal) => {
+							forwardedSignal = signal
+							return new Promise<MediaStream>(() => {})
+						})
+
+						const promise = getUserMediaStream('microphone', { audio: true }, { timeout: 1000 })
+						const expectation = expect(promise).rejects.toMatchObject({ name: 'TimeoutError' })
+						await vi.advanceTimersByTimeAsync(1000)
+						await expectation
+
+						// The timeout aborts the internal signal forwarded to acquireMediaStream so it can
+						// tear down a late stream.
+						expect(forwardedSignal?.aborted).toBe(true)
+					} finally {
+						vi.useRealTimers()
+					}
+				})
+
+				it('clears the timeout when acquisition resolves first', async () => {
+					vi.useFakeTimers()
+					try {
+						mockPermissionsQuery.mockResolvedValueOnce(statusOf('granted'))
+						mockAcquireMediaStream.mockResolvedValueOnce(FAKE_STREAM)
+
+						await expect(getUserMediaStream('camera', { video: true }, { timeout: 1000 })).resolves.toBe(
+							FAKE_STREAM
+						)
+						// No leaked timer left pending.
+						expect(vi.getTimerCount()).toBe(0)
+					} finally {
+						vi.useRealTimers()
+					}
+				})
+
+				it('gives a caller abort precedence over the timeout (AbortError, not TimeoutError)', async () => {
+					const controller = new AbortController()
+					mockPermissionsQuery.mockResolvedValueOnce(statusOf('prompt'))
+					let forwardedSignal: AbortSignal | undefined
+					mockAcquireMediaStream.mockImplementationOnce((_constraints, signal) => {
+						forwardedSignal = signal
+						return new Promise<MediaStream>(() => {})
+					})
+
+					const promise = getUserMediaStream(
+						'microphone',
+						{ audio: true },
+						{ signal: controller.signal, timeout: 10000 }
+					)
+					await flushMicrotasks()
+					controller.abort()
+
+					await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
+					// The caller abort also aborts the internal signal so acquireMediaStream can tear down.
+					expect(forwardedSignal?.aborted).toBe(true)
 				})
 			})
 		})

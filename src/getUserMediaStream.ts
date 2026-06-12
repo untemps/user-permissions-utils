@@ -1,7 +1,9 @@
 import acquireMediaStream from './_acquireMediaStream'
+import boundedWait from './_boundedWait'
 
 export interface GetUserMediaStreamOptions {
 	signal?: AbortSignal
+	timeout?: number
 }
 
 /**
@@ -10,11 +12,12 @@ export interface GetUserMediaStreamOptions {
  * @param mediaStreamConstraints    Constraints object. @see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints
  * @param options                   Optional settings
  * @param options.signal            Optional AbortSignal to cancel the operation
+ * @param options.timeout           Optional timeout in milliseconds; rejects with a `TimeoutError`
  */
 const getUserMediaStream = async (
 	permissionName: PermissionName,
 	mediaStreamConstraints: MediaStreamConstraints,
-	{ signal }: GetUserMediaStreamOptions = {}
+	{ signal, timeout }: GetUserMediaStreamOptions = {}
 ): Promise<MediaStream> => {
 	if (!navigator.permissions || !navigator.mediaDevices) {
 		throw new DOMException(
@@ -46,7 +49,19 @@ const getUserMediaStream = async (
 
 	// The `getUserMedia` call (and its abort teardown) lives in `acquireMediaStream`, which the
 	// camera/microphone triggers reuse directly so the active getters never re-query the permission.
-	return acquireMediaStream(mediaStreamConstraints, signal)
+	// Without a `timeout`, hand it the caller `signal` straight through.
+	if (timeout === undefined) {
+		return acquireMediaStream(mediaStreamConstraints, signal)
+	}
+
+	// With a `timeout`, merge `signal` + a `TimeoutError` timer into one internal signal via the same
+	// `boundedWait` helper the active getters use, and forward it to `acquireMediaStream`. Because that
+	// signal aborts on timeout, a stream resolving after the deadline is still torn down — the
+	// camera/microphone is never left live. Rejects with a `TimeoutError`, consistent with the getters.
+	return boundedWait<MediaStream>({ signal, timeout }, ({ signal: waitSignal, resolve, reject }) => {
+		acquireMediaStream(mediaStreamConstraints, waitSignal).then(resolve, reject)
+		return () => {} // `acquireMediaStream` owns its own teardown; nothing extra to detach here
+	})
 }
 
 export default getUserMediaStream
