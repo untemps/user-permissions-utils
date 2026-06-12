@@ -38,9 +38,6 @@ const getUserMediaStream = async (
 		}
 	}
 
-	// Give the abort precedence over the denied short-circuit, matching `getPermission` /
-	// `acquirePermission`: an abort that lands while the query settles rejects with `AbortError`,
-	// not `NOT_ALLOWED_ERR`.
 	signal?.throwIfAborted()
 
 	if (denied) {

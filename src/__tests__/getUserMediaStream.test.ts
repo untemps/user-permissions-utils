@@ -171,8 +171,6 @@ describe('getUserMediaStream', () => {
 				})
 
 				it("gives the abort precedence over a 'denied' state (AbortError, not NOT_ALLOWED_ERR)", async () => {
-					// An abort landing while the query settles on a previously-denied permission must reject
-					// with `AbortError`, consistent with `getPermission` / `acquirePermission` (issue #145).
 					const controller = new AbortController()
 					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'denied'
