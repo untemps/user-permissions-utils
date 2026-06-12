@@ -33,7 +33,7 @@ import {
 
 `getPermission`:
 
-Watches a permission and resolves with `'granted'` once it is granted. It is a **passive** watcher built on `navigator.permissions.query()`, so **it never displays a permission dialog**: an already-`'granted'` state resolves right away, while a `'denied'` state rejects with a `NOT_ALLOWED_ERR` `DOMException`.
+Watches a permission and resolves with `'granted'` once it is granted. It is a **passive** watcher built on `navigator.permissions.query()`, so **it never displays a permission dialog**: an already-`'granted'` state resolves right away, while a `'denied'` state rejects with a `NotAllowedError` `DOMException`.
 
 When the state is `'prompt'`, `getPermission` waits for the `change` event — which only fires once _something else_ triggers the real request (e.g. `getUserMediaStream`, `geolocation.getCurrentPosition`) and the user responds. Since nothing transitions a `'prompt'` state on its own, **the wait must be bounded**: pass a `timeout` (rejects with a `TimeoutError` once elapsed), a `signal`, or both. If you provide neither while the state is `'prompt'`, the promise rejects immediately with an `InvalidStateError` instead of hanging forever.
 
@@ -246,7 +246,7 @@ const init = async () => {
 controller.abort()
 ```
 
-> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NOT_SUPPORTED_ERR` `DOMException` when the API it relies on is unavailable — the Permissions API (all functions), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
+> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable — the Permissions API (all functions), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
 
 ## Development
 

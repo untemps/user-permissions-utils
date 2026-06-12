@@ -27,7 +27,7 @@ describe('getUserMediaStream', () => {
 		it('rejects promise', async () => {
 			await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 				message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 		})
 	})
@@ -49,7 +49,7 @@ describe('getUserMediaStream', () => {
 			it('rejects promise', async () => {
 				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 					message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
-					name: 'NOT_SUPPORTED_ERR',
+					name: 'NotSupportedError',
 				})
 			})
 		})
@@ -67,7 +67,7 @@ describe('getUserMediaStream', () => {
 
 				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
 					message: 'Permission denied',
-					name: 'NOT_ALLOWED_ERR',
+					name: 'NotAllowedError',
 				})
 				// A prior denial short-circuits before any stream acquisition.
 				expect(mockAcquireMediaStream).not.toHaveBeenCalled()
@@ -97,10 +97,10 @@ describe('getUserMediaStream', () => {
 				const status = new PermissionStatus() as unknown as MockPermissionStatus
 				status.state = 'prompt'
 				mockPermissionsQuery.mockResolvedValueOnce(status)
-				mockAcquireMediaStream.mockRejectedValueOnce(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+				mockAcquireMediaStream.mockRejectedValueOnce(new DOMException('Permission denied', 'NotAllowedError'))
 
 				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
-					name: 'NOT_ALLOWED_ERR',
+					name: 'NotAllowedError',
 				})
 			})
 
@@ -170,7 +170,7 @@ describe('getUserMediaStream', () => {
 					expect(mockAcquireMediaStream).not.toHaveBeenCalled()
 				})
 
-				it("gives the abort precedence over a 'denied' state (AbortError, not NOT_ALLOWED_ERR)", async () => {
+				it("gives the abort precedence over a 'denied' state (AbortError, not NotAllowedError)", async () => {
 					const controller = new AbortController()
 					const status = new PermissionStatus() as unknown as MockPermissionStatus
 					status.state = 'denied'

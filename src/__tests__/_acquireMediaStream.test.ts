@@ -14,10 +14,10 @@ describe('acquireMediaStream', () => {
 		beforeAll(() => setNavigatorApiUnsupported('mediaDevices'))
 		afterAll(() => restoreNavigatorApi('mediaDevices'))
 
-		it('rejects with NOT_SUPPORTED_ERR', async () => {
+		it('rejects with NotSupportedError', async () => {
 			await expect(acquireMediaStream({ audio: true })).rejects.toMatchObject({
 				message: 'Navigator API: mediaDevices not supported',
-				name: 'NOT_SUPPORTED_ERR',
+				name: 'NotSupportedError',
 			})
 		})
 	})
@@ -139,7 +139,7 @@ describe('acquireMediaStream', () => {
 					// consumes `mediaPromise`'s rejection, so this specifically guards the teardown's own
 					// `catch` sink: without it, `await mediaPromise` would rethrow and leak an unhandled
 					// rejection.
-					rejectStream(new DOMException('Permission denied', 'NOT_ALLOWED_ERR'))
+					rejectStream(new DOMException('Permission denied', 'NotAllowedError'))
 					await new Promise<void>((resolve) => setTimeout(resolve, 0))
 
 					expect(onUnhandled).not.toHaveBeenCalled()

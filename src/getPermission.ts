@@ -21,14 +21,14 @@ export const asPermissionName = (name: string): PermissionName => name as Permis
  * @param options.signal    Optional AbortSignal to cancel the pending wait
  * @param options.timeout   Optional timeout in milliseconds; rejects with a `TimeoutError`
  * @returns A promise resolved with `'granted'`
- * @throws {DOMException} `NOT_SUPPORTED_ERR`, `NOT_ALLOWED_ERR` (denied), `InvalidStateError` or `TimeoutError`
+ * @throws {DOMException} `NotSupportedError`, `NotAllowedError` (denied), `InvalidStateError` or `TimeoutError`
  */
 const getPermission = async (
 	permissionName: PermissionName,
 	{ signal, timeout }: GetPermissionOptions = {}
 ): Promise<'granted'> => {
 	if (!navigator.permissions) {
-		throw new DOMException('Navigator API: permissions not supported', 'NOT_SUPPORTED_ERR')
+		throw new DOMException('Navigator API: permissions not supported', 'NotSupportedError')
 	}
 
 	signal?.throwIfAborted()
@@ -72,7 +72,7 @@ const getPermission = async (
 // narrows `state` to `'granted'`, so the return needs no cast.
 const resolveOrRejectBasedOnState = (state: Exclude<PermissionState, 'prompt'>): 'granted' => {
 	if (state === 'denied') {
-		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+		throw new DOMException('Permission denied', 'NotAllowedError')
 	}
 	return state
 }

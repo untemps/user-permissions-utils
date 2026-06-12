@@ -1,19 +1,19 @@
 import acquireMediaStream from './_acquireMediaStream'
 import type { PermissionTrigger } from './_acquirePermission'
 
-const permissionDenied = (): DOMException => new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
+const permissionDenied = (): DOMException => new DOMException('Permission denied', 'NotAllowedError')
 
 // A permission can be queryable while the API that surfaces its prompt is absent (old browsers,
-// non-secure contexts, workers); normalise that to `NOT_SUPPORTED_ERR` rather than leak a raw
+// non-secure contexts, workers); normalise that to `NotSupportedError` rather than leak a raw
 // `TypeError` from `undefined.someMethod()`.
-const notSupported = (api: string): DOMException => new DOMException(`${api} not supported`, 'NOT_SUPPORTED_ERR')
+const notSupported = (api: string): DOMException => new DOMException(`${api} not supported`, 'NotSupportedError')
 
 const stopTracks = (stream: MediaStream): void => {
 	stream.getTracks().forEach((track) => track.stop())
 }
 
 // Native calls that surface each permission's dialog, normalised to resolve only on grant and reject
-// with a `DOMException` (`NOT_ALLOWED_ERR` denied, `NOT_SUPPORTED_ERR` absent) so `acquirePermission`
+// with a `DOMException` (`NotAllowedError` denied, `NotSupportedError` absent) so `acquirePermission`
 // treats them identically. camera/microphone delegate to `acquireMediaStream` (the `getUserMedia` core
 // of `getUserMediaStream`, minus the permission query `acquirePermission` has already performed).
 

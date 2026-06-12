@@ -9,14 +9,14 @@
  *
  * @param mediaStreamConstraints    Constraints object. @see https://developer.mozilla.org/en-US/docs/Web/API/MediaStreamConstraints
  * @param signal                    Optional AbortSignal to cancel the acquisition
- * @throws {DOMException} `NOT_SUPPORTED_ERR` when `navigator.mediaDevices` is unavailable
+ * @throws {DOMException} `NotSupportedError` when `navigator.mediaDevices` is unavailable
  */
 const acquireMediaStream = async (
 	mediaStreamConstraints: MediaStreamConstraints,
 	signal?: AbortSignal
 ): Promise<MediaStream> => {
 	if (!navigator.mediaDevices) {
-		throw new DOMException('Navigator API: mediaDevices not supported', 'NOT_SUPPORTED_ERR')
+		throw new DOMException('Navigator API: mediaDevices not supported', 'NotSupportedError')
 	}
 
 	signal?.throwIfAborted()
