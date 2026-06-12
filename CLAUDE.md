@@ -10,7 +10,8 @@ yarn test:ci       # tests one-shot avec coverage (utilisé par le pre-commit ho
 yarn typecheck     # vérification de types TypeScript (tsc --noEmit)
 yarn build         # compile CJS + ES + UMD + déclarations .d.ts vers dist/ via Vite
 yarn lint          # ESLint (typescript-eslint) sur tout le dépôt (src/, demo/, fichiers de config)
-yarn prettier      # formate tous les .js / .ts (hors .prettierignore)
+yarn prettier      # formate tous les .js / .ts (hors .prettierignore) — réécriture en place
+yarn format:check  # vérifie le formatage Prettier sans réécrire (utilisé par la CI ; échoue si un fichier n'est pas formaté)
 ```
 
 Lancer un test unique :
@@ -18,7 +19,7 @@ Lancer un test unique :
 yarn test:ci --reporter=verbose getPermission
 ```
 
-Le pre-commit hook exécute automatiquement `typecheck` + `test:ci` + `lint` + `prettier` via Husky 9 (`.husky/pre-commit`).
+Le pre-commit hook exécute automatiquement `typecheck` + `test:ci` + `lint` + `lint-staged` via Husky 9 (`.husky/pre-commit`). `lint-staged` (config dans `package.json`) lance `prettier --write` uniquement sur les fichiers `.js`/`.ts` **stagés** puis les re-stage, garantissant que le contenu commité est bien formaté (contrairement à l'ancien `yarn prettier --write` global qui ne re-stagait pas). Le formatage est aussi vérifié en CI via `format:check`.
 
 ## Architecture
 
@@ -60,7 +61,7 @@ Les déclarations de types (`dist/index.d.ts` et fichiers associés) sont géné
 
 Trois workflows GitHub Actions dans `.github/workflows/` :
 
-- `check.yml` : workflow **réutilisable** déclenché sur `pull_request` (vers `main` et `beta`) et via `workflow_call`. Installe les dépendances puis enchaîne `typecheck` + `test:ci` + `lint` + `build`, upload la couverture sur Codecov, et publie `dist/` en artifact **uniquement sur push** (pour que `publish.yml` le réutilise). C'est la validation pré-merge des PR.
+- `check.yml` : workflow **réutilisable** déclenché sur `pull_request` (vers `main` et `beta`) et via `workflow_call`. Installe les dépendances puis enchaîne `typecheck` + `test:ci` + `lint` + `format:check` + `build`, upload la couverture sur Codecov, et publie `dist/` en artifact **uniquement sur push** (pour que `publish.yml` le réutilise). C'est la validation pré-merge des PR.
 - `publish.yml` : sur push `main`/`beta`, appelle d'abord `check.yml` (`secrets: inherit` pour transmettre `CODECOV_TOKEN`), puis le job `publish` (`needs: check`) télécharge l'artifact `dist` au lieu de rebuilder et lance `npx semantic-release`. La publication reste donc protégée par la validation complète.
 - `codeql.yml` : analyse de sécurité CodeQL (JavaScript/TypeScript) sur push, PR et un cron hebdomadaire.
 
