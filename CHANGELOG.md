@@ -1,3 +1,13 @@
+# [2.0.0-beta.15](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.14...v2.0.0-beta.15) (2026-06-12)
+
+
+* fix!: Standardize DOMException error names (NotAllowedError/NotSupportedError) ([#163](https://github.com/untemps/user-permissions-utils/issues/163)) ([bcfa085](https://github.com/untemps/user-permissions-utils/commit/bcfa0854bcb102293fcd9d1fef1a563c651325de))
+
+
+### BREAKING CHANGES
+
+* Errors previously thrown with name 'NOT_ALLOWED_ERR' are now 'NotAllowedError', and 'NOT_SUPPORTED_ERR' is now 'NotSupportedError'. Consumers matching the old names must switch to the standard ones.
+
 # [2.0.0-beta.14](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.13...v2.0.0-beta.14) (2026-06-12)
 
 # [2.0.0-beta.13](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.12...v2.0.0-beta.13) (2026-06-12)
