@@ -1,3 +1,10 @@
+# [2.0.0-beta.11](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.10...v2.0.0-beta.11) (2026-06-12)
+
+
+### Performance Improvements
+
+* Avoid a redundant permissions query on the camera/microphone path ([#149](https://github.com/untemps/user-permissions-utils/issues/149)) ([eb5348a](https://github.com/untemps/user-permissions-utils/commit/eb5348a28b358a4f6c849889c8ec93389d14be94))
+
 # [2.0.0-beta.10](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.9...v2.0.0-beta.10) (2026-06-12)
 
 
