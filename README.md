@@ -262,7 +262,3 @@ To launch the interactive demo (Vite dev server) and exercise the utilities agai
 ```bash
 yarn dev
 ```
-
-## Todos
-
-- Extend the dedicated permission getters to sensor/device permissions (`accelerometer`, `bluetooth`, `gyroscope`, `magnetometer`, …) once they land in the DOM `PermissionName` type
