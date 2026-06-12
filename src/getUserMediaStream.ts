@@ -49,18 +49,13 @@ const getUserMediaStream = async (
 
 	// The `getUserMedia` call (and its abort teardown) lives in `acquireMediaStream`, which the
 	// camera/microphone triggers reuse directly so the active getters never re-query the permission.
-	// Without a `timeout`, hand it the caller `signal` straight through.
 	if (timeout === undefined) {
 		return acquireMediaStream(mediaStreamConstraints, signal)
 	}
 
-	// With a `timeout`, merge `signal` + a `TimeoutError` timer into one internal signal via the same
-	// `boundedWait` helper the active getters use, and forward it to `acquireMediaStream`. Because that
-	// signal aborts on timeout, a stream resolving after the deadline is still torn down — the
-	// camera/microphone is never left live. Rejects with a `TimeoutError`, consistent with the getters.
 	return boundedWait<MediaStream>({ signal, timeout }, ({ signal: waitSignal, resolve, reject }) => {
 		acquireMediaStream(mediaStreamConstraints, waitSignal).then(resolve, reject)
-		return () => {} // `acquireMediaStream` owns its own teardown; nothing extra to detach here
+		return () => {}
 	})
 }
 

@@ -206,10 +206,6 @@ describe('getUserMediaStream', () => {
 				})
 			})
 
-			// A `timeout` is merged with any caller `signal` into one internal AbortSignal (via
-			// `boundedWait`) that is forwarded to `acquireMediaStream`, so a stream resolving after the
-			// deadline is still torn down. The merge/teardown mechanics live in the `_boundedWait` and
-			// `_acquireMediaStream` suites; here we assert `getUserMediaStream` wires the timeout through.
 			describe('timeout', () => {
 				it('forwards a merged signal (not the raw caller signal) to acquireMediaStream', async () => {
 					mockPermissionsQuery.mockResolvedValueOnce(statusOf('granted'))
@@ -219,7 +215,6 @@ describe('getUserMediaStream', () => {
 						FAKE_STREAM
 					)
 					expect(mockAcquireMediaStream.mock.calls[0][0]).toEqual({ video: true })
-					// Not the raw signal (there is none) — a fresh internal signal carrying the timeout.
 					expect(mockAcquireMediaStream.mock.calls[0][1]).toBeInstanceOf(AbortSignal)
 				})
 
@@ -227,7 +222,6 @@ describe('getUserMediaStream', () => {
 					vi.useFakeTimers()
 					try {
 						mockPermissionsQuery.mockResolvedValueOnce(statusOf('prompt'))
-						// Never settles on its own: only the timeout can settle the acquisition.
 						let forwardedSignal: AbortSignal | undefined
 						mockAcquireMediaStream.mockImplementationOnce((_constraints, signal) => {
 							forwardedSignal = signal
@@ -239,8 +233,6 @@ describe('getUserMediaStream', () => {
 						await vi.advanceTimersByTimeAsync(1000)
 						await expectation
 
-						// The timeout aborts the internal signal forwarded to acquireMediaStream so it can
-						// tear down a late stream.
 						expect(forwardedSignal?.aborted).toBe(true)
 					} finally {
 						vi.useRealTimers()
@@ -256,7 +248,6 @@ describe('getUserMediaStream', () => {
 						await expect(getUserMediaStream('camera', { video: true }, { timeout: 1000 })).resolves.toBe(
 							FAKE_STREAM
 						)
-						// No leaked timer left pending.
 						expect(vi.getTimerCount()).toBe(0)
 					} finally {
 						vi.useRealTimers()
@@ -281,7 +272,6 @@ describe('getUserMediaStream', () => {
 					controller.abort()
 
 					await expect(promise).rejects.toMatchObject({ name: 'AbortError' })
-					// The caller abort also aborts the internal signal so acquireMediaStream can tear down.
 					expect(forwardedSignal?.aborted).toBe(true)
 				})
 			})
