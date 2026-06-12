@@ -1,3 +1,15 @@
+# [2.0.0-beta.16](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.15...v2.0.0-beta.16) (2026-06-12)
+
+
+### Bug Fixes
+
+* Standardize geolocation non-denial failures to DOMException ([#164](https://github.com/untemps/user-permissions-utils/issues/164)) ([a4a303a](https://github.com/untemps/user-permissions-utils/commit/a4a303aeb61e79d24e9f5e804b24637555fe525f))
+
+
+### BREAKING CHANGES
+
+* POSITION_UNAVAILABLE/TIMEOUT geolocation failures now reject with a DOMException (NotReadableError/TimeoutError) instead of the raw GeolocationPositionError. The numeric `code` moves from the top-level error to `error.ca
+
 # [2.0.0-beta.15](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.14...v2.0.0-beta.15) (2026-06-12)
 
 
