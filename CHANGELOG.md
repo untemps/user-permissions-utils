@@ -1,3 +1,10 @@
+# [2.0.0-beta.13](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.12...v2.0.0-beta.13) (2026-06-12)
+
+
+### Bug Fixes
+
+* Remove the change listener when watchPermission's upfront emit throws ([#155](https://github.com/untemps/user-permissions-utils/issues/155)) ([2051615](https://github.com/untemps/user-permissions-utils/commit/2051615a8b0f3da2c5f622d3fc319e72b2d8b441))
+
 # [2.0.0-beta.12](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.11...v2.0.0-beta.12) (2026-06-12)
 
 
