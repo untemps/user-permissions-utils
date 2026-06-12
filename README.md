@@ -248,14 +248,14 @@ controller.abort()
 
 ## Development
 
-The development toolchain targets Node 24, pinned via [`.nvmrc`](.nvmrc):
+The development toolchain requires Node `>= 22.22.1` — a hard floor imposed by the pinned tooling (notably `lint-staged`, used by the pre-commit hook) — and targets Node 24, pinned via [`.nvmrc`](.nvmrc):
 
 ```bash
 nvm use
 yarn install
 ```
 
-Consumers only need Node `>= 20` (see [Installation](#installation)); the higher floor is for working on the project itself.
+Consumers only need Node `>= 20` (see [Installation](#installation)); the higher floor applies only to working on the project itself, so it lives in [`.nvmrc`](.nvmrc) rather than in `package.json`'s `engines` field (which states the runtime requirement for consumers).
 
 To launch the interactive demo (Vite dev server) and exercise the utilities against real browser permission prompts:
 

@@ -23,6 +23,7 @@ jobs:
             - run: yarn typecheck
             - run: yarn test:ci
             - run: yarn lint
+            - run: yarn format:check
             - run: yarn build
             # On the workflow_call path the github context is the caller's, so
             # event_name is 'push' when invoked by publish.yml — that is what lets
