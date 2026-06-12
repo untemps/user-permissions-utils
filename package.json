@@ -89,6 +89,7 @@
 		"build": "vite build",
 		"lint": "eslint .",
 		"prettier": "prettier \"./**/*.{js,ts}\" --ignore-path ./.prettierignore --write",
+		"format:check": "prettier \"./**/*.{js,ts}\" --ignore-path ./.prettierignore --check",
 		"prepare": "husky"
 	}
 }
