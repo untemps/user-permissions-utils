@@ -8,6 +8,19 @@ const permissionDenied = (): DOMException => new DOMException('Permission denied
 // `TypeError` from `undefined.someMethod()`.
 const notSupported = (api: string): DOMException => new DOMException(`${api} not supported`, 'NotSupportedError')
 
+// `getCurrentPosition`'s non-denial failures surface a `GeolocationPositionError`, which is **not** a
+// `DOMException` and exposes no `name`. Wrap it so the trigger contract holds (`.name`/`.message` always
+// present): `TIMEOUT` → `TimeoutError`, `POSITION_UNAVAILABLE` → `NotReadableError`, keeping the native
+// error as `cause` (so `code`/`message` remain reachable).
+const geolocationFailed = (error: GeolocationPositionError): DOMException =>
+	Object.assign(
+		new DOMException(
+			error.message || 'Geolocation unavailable',
+			error.code === error.TIMEOUT ? 'TimeoutError' : 'NotReadableError'
+		),
+		{ cause: error }
+	)
+
 const stopTracks = (stream: MediaStream): void => {
 	stream.getTracks().forEach((track) => track.stop())
 }
@@ -30,8 +43,9 @@ export const geolocationTrigger: PermissionTrigger = () =>
 		}
 		navigator.geolocation.getCurrentPosition(
 			() => resolve(),
-			// Only PERMISSION_DENIED is a denial; POSITION_UNAVAILABLE/TIMEOUT propagate as-is.
-			(error) => reject(error.code === error.PERMISSION_DENIED ? permissionDenied() : error)
+			// PERMISSION_DENIED is a denial (NotAllowedError); POSITION_UNAVAILABLE/TIMEOUT are wrapped
+			// in a DOMException so the trigger always rejects with one, never a raw GeolocationPositionError.
+			(error) => reject(error.code === error.PERMISSION_DENIED ? permissionDenied() : geolocationFailed(error))
 		)
 	})
 
