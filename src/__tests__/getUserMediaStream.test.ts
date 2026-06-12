@@ -108,6 +108,34 @@ describe('getUserMediaStream', () => {
 				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toEqual(new Error('ERR'))
 			})
 
+			describe('permission name not queryable (Firefox/Safari)', () => {
+				// `query()` throws a `TypeError` for a device the browser supports through `getUserMedia`
+				// but won't let you query (Firefox: camera/microphone). The call must fall through to
+				// `getUserMedia` rather than leaking the `TypeError`.
+				it('falls through to getUserMedia when query throws a TypeError', async () => {
+					mockPermissionsQuery.mockImplementationOnce(() => {
+						throw new TypeError("'camera' is not a valid enum value of type PermissionName")
+					})
+					mockMediaDevicesGetUserMedia.mockResolvedValueOnce(FAKE_STREAM)
+
+					await expect(getUserMediaStream('camera', { video: true })).resolves.toBe(FAKE_STREAM)
+					expect(mockMediaDevicesGetUserMedia).toHaveBeenCalledWith({ video: true })
+				})
+
+				it('lets getUserMedia surface a denial when query is not queryable', async () => {
+					mockPermissionsQuery.mockImplementationOnce(() => {
+						throw new TypeError("'camera' is not a valid enum value of type PermissionName")
+					})
+					mockMediaDevicesGetUserMedia.mockRejectedValueOnce(
+						new DOMException('Permission denied', 'NotAllowedError')
+					)
+
+					await expect(getUserMediaStream('camera', { video: true })).rejects.toMatchObject({
+						name: 'NotAllowedError',
+					})
+				})
+			})
+
 			describe('AbortSignal', () => {
 				it('rejects immediately when signal is already aborted', async () => {
 					const controller = new AbortController()

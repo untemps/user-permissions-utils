@@ -83,6 +83,19 @@ describe('acquirePermission', () => {
 			await expect(acquirePermission('camera', vi.fn())).rejects.toEqual(new Error('ERR'))
 		})
 
+		// `query()` throws a `TypeError` for a permission name the browser won't query (Firefox/Safari:
+		// camera/microphone/midi) even though the trigger's native API works. Treat it as `'prompt'` so
+		// the trigger still surfaces the real dialog instead of leaking the `TypeError`.
+		it('treats a non-queryable name (query throws TypeError) as "prompt" and fires the trigger', async () => {
+			mockPermissionsQuery.mockImplementationOnce(() => {
+				throw new TypeError("'camera' is not a valid enum value of type PermissionName")
+			})
+			const trigger = vi.fn().mockResolvedValueOnce(undefined)
+
+			await expect(acquirePermission('camera', trigger)).resolves.toBe('granted')
+			expect(trigger).toHaveBeenCalledOnce()
+		})
+
 		describe('AbortSignal', () => {
 			it('rejects immediately when the signal is already aborted, before querying', async () => {
 				const controller = new AbortController()

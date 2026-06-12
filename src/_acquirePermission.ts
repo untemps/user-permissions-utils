@@ -35,14 +35,24 @@ const acquirePermission = async (
 
 	signal?.throwIfAborted()
 
-	const permissionStatus = await navigator.permissions.query({ name: permissionName })
+	// Browsers that can't query this permission name (Firefox/Safari: `camera`/`microphone`/`midi`)
+	// throw a `TypeError` even though the trigger's native API works. Treat that as `'prompt'` so the
+	// trigger still surfaces the real dialog; any other query error propagates unchanged.
+	let state: PermissionState = 'prompt'
+	try {
+		state = (await navigator.permissions.query({ name: permissionName })).state
+	} catch (error) {
+		if (!(error instanceof TypeError)) {
+			throw error
+		}
+	}
 
 	signal?.throwIfAborted()
 
-	if (permissionStatus.state === 'granted') {
+	if (state === 'granted') {
 		return 'granted'
 	}
-	if (permissionStatus.state === 'denied') {
+	if (state === 'denied') {
 		throw new DOMException('Permission denied', 'NOT_ALLOWED_ERR')
 	}
 
