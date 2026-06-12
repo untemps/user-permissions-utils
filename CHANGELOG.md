@@ -1,3 +1,5 @@
+# [2.0.0-beta.17](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.16...v2.0.0-beta.17) (2026-06-12)
+
 # [2.0.0-beta.16](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.15...v2.0.0-beta.16) (2026-06-12)
 
 
