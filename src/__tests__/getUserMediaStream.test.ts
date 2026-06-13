@@ -28,14 +28,26 @@ const statusOf = (state: PermissionState): MockPermissionStatus => {
 // `_acquireMediaStream` tests; this suite asserts the query contract and the delegation.
 describe('getUserMediaStream', () => {
 	describe('navigator.permissions is not implemented', () => {
-		beforeAll(() => setNavigatorApiUnsupported('permissions'))
-		afterAll(() => restoreNavigatorApi('permissions'))
+		// The Permissions API only powers the best-effort denial short-circuit; its absence (e.g. older
+		// Safari) must not block acquisition. `getUserMedia` is the real authority, so we fall through to
+		// `acquireMediaStream` without ever querying.
+		const mockMediaDevicesGetUserMedia = vi.fn()
 
-		it('rejects promise', async () => {
-			await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
-				message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
-				name: 'NotSupportedError',
-			})
+		beforeAll(() => {
+			setNavigatorApiUnsupported('permissions')
+			setupMediaDevicesMock(mockMediaDevicesGetUserMedia)
+		})
+		afterAll(() => {
+			teardownMediaDevicesMock()
+			restoreNavigatorApi('permissions')
+		})
+		beforeEach(() => mockAcquireMediaStream.mockReset())
+
+		it('falls through to acquireMediaStream without querying', async () => {
+			mockAcquireMediaStream.mockResolvedValueOnce(FAKE_STREAM)
+
+			await expect(getUserMediaStream('microphone', { audio: true })).resolves.toBe(FAKE_STREAM)
+			expect(mockAcquireMediaStream).toHaveBeenCalledWith({ audio: true }, undefined)
 		})
 	})
 
@@ -55,7 +67,7 @@ describe('getUserMediaStream', () => {
 
 			it('rejects promise', async () => {
 				await expect(getUserMediaStream('microphone', { audio: true })).rejects.toMatchObject({
-					message: 'Navigator API: permissions or Navigator API: mediaDevices not supported',
+					message: 'Navigator API: mediaDevices not supported',
 					name: 'NotSupportedError',
 				})
 			})
