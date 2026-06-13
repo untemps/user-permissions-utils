@@ -124,10 +124,23 @@ describe('getUserMediaStream', () => {
 				// `query()` throws a `TypeError` for a device the browser supports through `getUserMedia`
 				// but won't let you query (Firefox: camera/microphone). The call must fall through to the
 				// stream acquisition rather than leaking the `TypeError`.
-				it('falls through to acquireMediaStream when query throws a TypeError', async () => {
-					mockPermissionsQuery.mockImplementationOnce(() => {
-						throw new TypeError("'camera' is not a valid enum value of type PermissionName")
-					})
+				it.each([
+					{
+						mode: 'throws synchronously',
+						fail: () =>
+							mockPermissionsQuery.mockImplementationOnce(() => {
+								throw new TypeError("'camera' is not a valid enum value of type PermissionName")
+							}),
+					},
+					{
+						mode: 'rejects its promise',
+						fail: () =>
+							mockPermissionsQuery.mockRejectedValueOnce(
+								new TypeError("'camera' is not a valid enum value of type PermissionName")
+							),
+					},
+				])('falls through to acquireMediaStream when query $mode', async ({ fail }) => {
+					fail()
 					mockAcquireMediaStream.mockResolvedValueOnce(FAKE_STREAM)
 
 					await expect(getUserMediaStream('camera', { video: true })).resolves.toBe(FAKE_STREAM)
