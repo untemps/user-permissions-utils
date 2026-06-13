@@ -1,4 +1,5 @@
 import watchPermission from '../watchPermission'
+import { asPermissionName } from '../getPermission'
 import {
 	setNavigatorApiUnsupported,
 	restoreNavigatorApi,
@@ -33,6 +34,22 @@ describe('watchPermission', () => {
 			mockPermissionsQuery.mockResolvedValueOnce(status)
 			await watchPermission('camera', vi.fn())
 			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'camera' })
+		})
+
+		it('forwards a full descriptor (push userVisibleOnly) to query()', async () => {
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
+			status.state = 'granted'
+			mockPermissionsQuery.mockResolvedValueOnce(status)
+			await watchPermission({ name: 'push', userVisibleOnly: true }, vi.fn())
+			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'push', userVisibleOnly: true })
+		})
+
+		it('queries a clipboard permission name passed as a string', async () => {
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
+			status.state = 'prompt'
+			mockPermissionsQuery.mockResolvedValueOnce(status)
+			await watchPermission(asPermissionName('clipboard-read'), vi.fn())
+			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'clipboard-read' })
 		})
 
 		it('emits the current state immediately by default', async () => {
