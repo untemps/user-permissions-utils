@@ -1,3 +1,5 @@
+import type { PermissionQueryDescriptor } from './getPermission'
+
 export interface WatchPermissionOptions {
 	signal?: AbortSignal
 	emitImmediately?: boolean
@@ -25,7 +27,7 @@ export interface WatchPermissionOptions {
  * abort listeners are removed before the returned promise rejects, so a throwing emit never leaves a
  * zombie subscription behind.
  *
- * @param permissionName            Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
+ * @param permission                Permission name, or a full descriptor for permissions that need extra query members (e.g. `{ name: 'push', userVisibleOnly: true }`). @see https://w3c.github.io/permissions/#enumdef-permissionname
  * @param onChange                  Called with the permission state on each transition (and once upfront unless `emitImmediately` is `false`)
  * @param options                   Optional settings
  * @param options.signal            Optional AbortSignal that stops the subscription (removes the `change` listener); aborting before the subscription is active rejects with `AbortError` instead
@@ -34,7 +36,7 @@ export interface WatchPermissionOptions {
  * @throws {DOMException} `NotSupportedError` when the Permissions API is unavailable, or `AbortError` when `signal` is already aborted before the subscription is active
  */
 const watchPermission = async (
-	permissionName: PermissionName,
+	permission: PermissionName | PermissionQueryDescriptor,
 	onChange: (state: PermissionState) => void,
 	{ signal, emitImmediately = true }: WatchPermissionOptions = {}
 ): Promise<void> => {
@@ -44,7 +46,9 @@ const watchPermission = async (
 
 	signal?.throwIfAborted()
 
-	const permissionStatus = await navigator.permissions.query({ name: permissionName })
+	const descriptor = typeof permission === 'string' ? { name: permission } : permission
+
+	const permissionStatus = await navigator.permissions.query(descriptor)
 
 	signal?.throwIfAborted()
 
