@@ -80,9 +80,6 @@ describe('getPermission', () => {
 			await expect(getPermission('microphone')).rejects.toEqual(new Error('ERR'))
 		})
 
-		// A browser that can't query a permission name surfaces the failure as a *rejected* promise, not
-		// a synchronous throw; cover both so the `await query()` + try/catch is proven against the shape
-		// the browser actually produces.
 		it.each([
 			{
 				mode: 'throws synchronously',

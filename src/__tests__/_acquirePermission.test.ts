@@ -83,10 +83,9 @@ describe('acquirePermission', () => {
 			await expect(acquirePermission('camera', vi.fn())).rejects.toEqual(new Error('ERR'))
 		})
 
-		// `query()` fails for a permission name the browser won't query (Firefox/Safari:
+		// `query()` throws a `TypeError` for a permission name the browser won't query (Firefox/Safari:
 		// camera/microphone/midi) even though the trigger's native API works. Treat it as `'prompt'` so
-		// the trigger still surfaces the real dialog instead of leaking the `TypeError`. The browser
-		// surfaces this as a *rejected* promise, not a synchronous throw, so cover both shapes.
+		// the trigger still surfaces the real dialog instead of leaking the `TypeError`.
 		it.each([
 			{
 				mode: 'throws a TypeError synchronously',

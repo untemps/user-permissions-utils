@@ -88,9 +88,6 @@ describe('dedicated permission getters', () => {
 			expect(mockPermissionsQuery).toHaveBeenCalledWith(descriptor ?? { name })
 		})
 
-		// Firefox/Safari can't query `push`; the failure reaches us as a *rejected* promise, not a
-		// synchronous throw. Cover both shapes so this regression (the bug behind #167) stays caught
-		// however the browser surfaces it.
 		it.each([
 			{
 				mode: 'throws synchronously',

@@ -121,10 +121,9 @@ describe('getUserMediaStream', () => {
 			})
 
 			describe('permission name not queryable (Firefox/Safari)', () => {
-				// `query()` fails for a device the browser supports through `getUserMedia` but won't let you
-				// query (Firefox: camera/microphone). The call must fall through to the stream acquisition
-				// rather than leaking the `TypeError`. The browser surfaces this as a *rejected* promise,
-				// not a synchronous throw, so cover both shapes.
+				// `query()` throws a `TypeError` for a device the browser supports through `getUserMedia`
+				// but won't let you query (Firefox: camera/microphone). The call must fall through to the
+				// stream acquisition rather than leaking the `TypeError`.
 				it.each([
 					{
 						mode: 'throws a TypeError synchronously',
