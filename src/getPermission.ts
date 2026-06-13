@@ -5,6 +5,10 @@ export interface GetPermissionOptions {
 	timeout?: number
 }
 
+export interface PermissionQueryDescriptor extends PermissionDescriptor {
+	userVisibleOnly?: boolean
+}
+
 // `clipboard-read` / `clipboard-write` are valid at runtime but not (yet) in the DOM
 // `PermissionName` union — this narrow assertion satisfies the typed parameter from one place.
 export const asPermissionName = (name: string): PermissionName => name as PermissionName
@@ -17,14 +21,15 @@ export const asPermissionName = (name: string): PermissionName => name as Permis
  * Since nothing transitions `'prompt'` on its own, the wait must be bounded by `signal` and/or
  * `timeout`; with neither, it rejects immediately with `InvalidStateError` rather than hanging.
  *
- * @param permissionName    Name of the permission. @see https://w3c.github.io/permissions/#enumdef-permissionname
+ * @param permission         Permission name, or a full descriptor for permissions that need extra
+ *                           query members (e.g. `{ name: 'push', userVisibleOnly: true }`)
  * @param options.signal    Optional AbortSignal to cancel the pending wait
  * @param options.timeout   Optional timeout in milliseconds; rejects with a `TimeoutError`
  * @returns A promise resolved with `'granted'`
- * @throws {DOMException} `NotSupportedError`, `NotAllowedError` (denied), `InvalidStateError` or `TimeoutError`
+ * @throws {DOMException} `NotSupportedError` (API absent or name non-queryable), `NotAllowedError` (denied), `InvalidStateError` or `TimeoutError`
  */
 const getPermission = async (
-	permissionName: PermissionName,
+	permission: PermissionName | PermissionQueryDescriptor,
 	{ signal, timeout }: GetPermissionOptions = {}
 ): Promise<'granted'> => {
 	if (!navigator.permissions) {
@@ -33,7 +38,17 @@ const getPermission = async (
 
 	signal?.throwIfAborted()
 
-	const permissionStatus = await navigator.permissions.query({ name: permissionName })
+	const descriptor = typeof permission === 'string' ? { name: permission } : permission
+
+	let permissionStatus: PermissionStatus
+	try {
+		permissionStatus = await navigator.permissions.query(descriptor)
+	} catch (error) {
+		if (error instanceof TypeError) {
+			throw new DOMException(`Permission "${descriptor.name}" cannot be queried`, 'NotSupportedError')
+		}
+		throw error
+	}
 
 	signal?.throwIfAborted()
 
