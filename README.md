@@ -113,7 +113,7 @@ const init = async () => {
 
 > **Pass a `timeout` for unattended flows.** Unlike the passive getters (and `getPermission`), the active getters don't require `signal`/`timeout` on `'prompt'` — the native prompt they surface settles the wait when the user responds. But if the user neither accepts nor dismisses, the wait lasts as long as the prompt does. Add a `timeout` (and/or `signal`) whenever you can't rely on a timely response.
 
-> **Non-queryable permission names fall through to the native API.** Some browsers support a device but reject `navigator.permissions.query()` for its name with a `TypeError` (e.g. Firefox / Safari for `camera`, `microphone`, `midi`). The active getters and `getUserMediaStream` catch that and surface the prompt through the native API anyway (`getUserMedia`, `requestMIDIAccess`, …) instead of failing, so they work cross-browser. The passive getters and `checkPermission` have no native trigger to fall back on, so they still propagate the `query()` error.
+> **Non-queryable permission names fall through to the native API.** Some browsers support a device but reject `navigator.permissions.query()` for its name with a `TypeError` (e.g. Firefox / Safari for `camera`, `microphone`, `midi`). The active getters and `getUserMediaStream` catch that and surface the prompt through the native API anyway (`getUserMedia`, `requestMIDIAccess`, …) instead of failing, so they work cross-browser. The passive getters have no native trigger to fall back on, so they instead **normalize** the `TypeError` to a `NotSupportedError` `DOMException` — keeping the guarantee that every getter rejects with a `DOMException`. Only `checkPermission`, which reports the raw state, still propagates the original `query()` error so callers can inspect it.
 
 **Passive getters** only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library cannot trigger them from a permission name alone without consumer-owned infrastructure or a privacy-sensitive side effect. The **bounded-wait** requirement on `'prompt'` therefore applies (pass `signal` and/or `timeout`):
 
@@ -124,6 +124,8 @@ const init = async () => {
 | `getClipboardWritePermission` | `'clipboard-write'` | the only way to prompt is to overwrite the user's clipboard |
 
 Trigger those yourself (e.g. `registration.pushManager.subscribe(...)`, `navigator.clipboard.read()`), then let the passive getter resolve.
+
+> `getPushPermission` queries `push` with `userVisibleOnly: true` because Chromium rejects the descriptor otherwise (silent push is not allowed). On browsers that can't query `push` at all (Firefox / Safari), the resulting `TypeError` is normalized to a `NotSupportedError` `DOMException` like the other passive getters.
 
 > `clipboard-read` and `clipboard-write` are valid permission names at runtime but are not (yet) part of the DOM `PermissionName` type, so those two wrappers assert the name internally.
 
