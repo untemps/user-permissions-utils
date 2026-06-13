@@ -115,6 +115,8 @@ const init = async () => {
 
 > **Non-queryable permission names fall through to the native API.** Some browsers support a device but reject `navigator.permissions.query()` for its name with a `TypeError` (e.g. Firefox / Safari for `camera`, `microphone`, `midi`). The active getters and `getUserMediaStream` catch that and surface the prompt through the native API anyway (`getUserMedia`, `requestMIDIAccess`, …) instead of failing, so they work cross-browser. The passive getters have no native trigger to fall back on, so they instead **normalize** the `TypeError` to a `NotSupportedError` `DOMException` — keeping the guarantee that every getter rejects with a `DOMException`. Only `checkPermission`, which reports the raw state, still propagates the original `query()` error so callers can inspect it.
 
+> **`getUserMediaStream` treats the whole Permissions API as best-effort.** The query only lets it short-circuit a _previously denied_ permission; it is not required to acquire a stream. So on browsers that expose `navigator.mediaDevices.getUserMedia` but not `navigator.permissions` at all (e.g. older Safari), `getUserMediaStream` skips the query entirely and goes straight to `getUserMedia` — which surfaces the real prompt or rejects on its own — rather than throwing `NotSupportedError`. It requires only MediaDevices.
+
 **Passive getters** only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library cannot trigger them from a permission name alone without consumer-owned infrastructure or a privacy-sensitive side effect. The **bounded-wait** requirement on `'prompt'` therefore applies (pass `signal` and/or `timeout`):
 
 | Function                      | Permission name     | Why it stays passive                                        |
@@ -265,7 +267,7 @@ const init = async () => {
 }
 ```
 
-> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable — the Permissions API (all functions), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
+> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable — the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. `getUserMediaStream` is the exception: it requires only MediaDevices and treats the Permissions API as best-effort, so a missing `navigator.permissions` skips the denial short-circuit instead of failing (see below). To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
 
 ## Development
 
