@@ -13,6 +13,6 @@ export { default as getPersistentStoragePermission } from './getPersistentStorag
 export { default as getPushPermission } from './getPushPermission'
 export { default as getScreenWakeLockPermission } from './getScreenWakeLockPermission'
 export { default as getStorageAccessPermission } from './getStorageAccessPermission'
-export type { GetPermissionOptions } from './getPermission'
+export type { GetPermissionOptions, PermissionQueryDescriptor } from './getPermission'
 export type { WatchPermissionOptions } from './watchPermission'
 export type { GetUserMediaStreamOptions } from './getUserMediaStream'
