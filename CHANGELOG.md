@@ -1,3 +1,10 @@
+# [2.0.0-beta.21](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.20...v2.0.0-beta.21) (2026-06-13)
+
+
+### Features
+
+* Accept a PermissionQueryDescriptor in checkPermission & watchPermission ([#174](https://github.com/untemps/user-permissions-utils/issues/174)) ([97dfe3d](https://github.com/untemps/user-permissions-utils/commit/97dfe3d12286b1a8ce2c56a55a47fbe1132a9aeb))
+
 # [2.0.0-beta.20](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.19...v2.0.0-beta.20) (2026-06-13)
 
 
