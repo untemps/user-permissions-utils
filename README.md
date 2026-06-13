@@ -1,6 +1,6 @@
 # @untemps/user-permissions-utils
 
-Collection of utility functions to manage user permissions.
+> Tiny, typed wrappers around the browser `navigator.permissions` and `navigator.mediaDevices` APIs — read a permission state, watch it, wait for a grant, or surface the prompt, without reaching for the raw browser API.
 
 ![npm](https://img.shields.io/npm/v/@untemps/user-permissions-utils?style=for-the-badge)
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/untemps/user-permissions-utils/publish.yml?style=for-the-badge)](https://github.com/untemps/user-permissions-utils/actions)
@@ -14,46 +14,179 @@ yarn add @untemps/user-permissions-utils
 
 **Requirements:** Node.js `>= 20`.
 
-## TypeScript
+## Quick start
 
-This package is written in TypeScript and ships its own type declarations — no extra `@types/...` package is required. The option types are exported for convenience:
+```javascript
+import { checkPermission, getUserMediaStream } from '@untemps/user-permissions-utils'
 
-```typescript
-import {
-	getPermission,
-	getUserMediaStream,
-	type GetPermissionOptions,
-	type GetUserMediaStreamOptions,
-} from '@untemps/user-permissions-utils'
+// Read the current state without prompting the user
+const state = await checkPermission('camera') // 'granted' | 'denied' | 'prompt'
+
+// Surface the prompt and get the resulting stream once granted
+const stream = await getUserMediaStream('camera', { video: true })
+document.querySelector('video').srcObject = stream
 ```
 
-`permissionName` is typed as the DOM `PermissionName` (e.g. `'microphone'`, `'camera'`) and `mediaStreamConstraints` as the DOM `MediaStreamConstraints`.
+## API at a glance
 
-## Utils
+Two families of functions: those that only **observe** a permission state (they never surface a dialog) and those that **request** one (they surface the browser prompt). See [Concepts](#concepts) for the mental model.
 
-`getPermission`:
+**Inspect the current state** — read only, never prompts:
+
+| Function                              | What it does                   |
+| ------------------------------------- | ------------------------------ |
+| [`checkPermission`](#checkpermission) | Read the current state once    |
+| [`watchPermission`](#watchpermission) | Observe the state continuously |
+
+**Wait for a grant** — never prompts; something else must trigger the real request:
+
+| Function                                                          | Permission name     |
+| ----------------------------------------------------------------- | ------------------- |
+| [`getPermission`](#getpermission)                                 | _any_               |
+| [`getPushPermission`](#passive-getters-push--clipboard)           | `'push'`            |
+| [`getClipboardReadPermission`](#passive-getters-push--clipboard)  | `'clipboard-read'`  |
+| [`getClipboardWritePermission`](#passive-getters-push--clipboard) | `'clipboard-write'` |
+
+**Request a permission** — surfaces the prompt, then resolves once granted:
+
+| Function                                            | Permission name        |
+| --------------------------------------------------- | ---------------------- |
+| [`getCameraPermission`](#active-getters)            | `'camera'`             |
+| [`getMicrophonePermission`](#active-getters)        | `'microphone'`         |
+| [`getGeolocationPermission`](#active-getters)       | `'geolocation'`        |
+| [`getNotificationsPermission`](#active-getters)     | `'notifications'`      |
+| [`getMidiPermission`](#active-getters)              | `'midi'`               |
+| [`getPersistentStoragePermission`](#active-getters) | `'persistent-storage'` |
+| [`getScreenWakeLockPermission`](#active-getters)    | `'screen-wake-lock'`   |
+| [`getStorageAccessPermission`](#active-getters)     | `'storage-access'`     |
+
+**Acquire a media stream** — requests camera/microphone and returns the `MediaStream`:
+
+| Function                                    | What it does                                          |
+| ------------------------------------------- | ----------------------------------------------------- |
+| [`getUserMediaStream`](#getusermediastream) | Surface the prompt and resolve with the `MediaStream` |
+
+## Concepts
+
+Read this once and the API reference is mostly self-explanatory.
+
+### Passive vs active
+
+- **Passive** functions only _observe_ the state through `navigator.permissions.query()` and its `change` event. They **never surface a dialog**. `checkPermission`, `watchPermission`, `getPermission`, and the `push` / `clipboard` getters are all passive.
+- **Active** functions _request_ a permission: they read the state and, on `'prompt'`, fire the matching native API (`getUserMedia`, `geolocation.getCurrentPosition`, `Notification.requestPermission`, …) — which is what surfaces the real browser dialog. The dedicated camera/microphone/geolocation/… getters and `getUserMediaStream` are active.
+
+Some getters _can't_ be active: triggering a prompt from a permission name alone would require consumer-owned infrastructure (`push` needs a service worker and a VAPID key) or a privacy-sensitive side effect (the only way to prompt `clipboard-read` is to read the user's clipboard). Those stay passive — you trigger the real request yourself, then let the getter resolve.
+
+Conversely, a few **active getters resolve without ever showing a dialog**: `persistent-storage`, `midi`, `screen-wake-lock` and `storage-access` are granted heuristically or by policy rather than through an explicit prompt. They still fire their native API and resolve with `'granted'` all the same.
+
+### The bounded-wait contract
+
+`query()` never transitions a `'prompt'` state on its own — it only reports it. So a passive wait on `'prompt'` would hang forever unless something else triggers the real request.
+
+- **Passive** (`getPermission`, `push` / `clipboard` getters): on `'prompt'` you **must** pass a `timeout` (rejects with a `TimeoutError`), a `signal`, or both. Provide neither and the promise rejects immediately with an `InvalidStateError` instead of hanging forever.
+- **Active** (dedicated getters, `getUserMediaStream`): the native prompt they surface settles the wait when the user responds, so `signal` / `timeout` are **optional**. Still pass a `timeout` for unattended flows — if the user neither accepts nor dismisses, the wait lasts as long as the prompt does.
+
+`signal` / `timeout` bound the _wait_, not the prompt. Aborting or timing out rejects the returned promise, but the browser can't cancel a dialog it already surfaced: the prompt stays open and a late grant shows up only in the live state (read it via `checkPermission`), not in the rejected promise. The exception is `getCameraPermission` / `getMicrophonePermission` / `getUserMediaStream`, which forward the signal and tear down any stream that resolves after the abort, so the camera/microphone is never left active.
+
+### Errors and feature detection
+
+There are **no `is…Supported` helpers**. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable: the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), or — for active getters — the native trigger API (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). **Every getter is guaranteed to reject with a `DOMException`**; even a missing trigger API is normalized rather than leaking a raw `TypeError`.
+
+`getUserMediaStream` is the exception: it requires only MediaDevices and treats the Permissions API as **best-effort**. The query only lets it short-circuit a _previously denied_ permission; it isn't required to acquire a stream. On browsers that expose `navigator.mediaDevices.getUserMedia` but not `navigator.permissions` (e.g. older Safari), it skips the query and goes straight to `getUserMedia`.
+
+To probe support upfront, call `checkPermission(name)` and catch: it rejects when the Permissions API is unsupported and propagates `query()` errors (e.g. an unrecognized permission name). `checkPermission` is the only function that surfaces the raw `query()` error — every other one normalizes it.
+
+### Permission name or descriptor
+
+`getPermission`, `checkPermission` and `watchPermission` accept either a permission **name** string or a full **`PermissionQueryDescriptor`**. The descriptor form lets you read permissions that need extra query members — notably `push`, which Chromium only queries with `userVisibleOnly: true` (silent push isn't allowed):
+
+```javascript
+await checkPermission({ name: 'push', userVisibleOnly: true })
+```
+
+`clipboard-read` and `clipboard-write` are valid permission names at runtime but aren't yet part of the DOM `PermissionName` type, so those two wrappers assert the name internally.
+
+### Cross-browser fallthrough
+
+Some browsers support a device but reject `navigator.permissions.query()` for its name with a `TypeError` (e.g. Firefox / Safari for `camera`, `microphone`, `midi`).
+
+- **Active** getters and `getUserMediaStream` catch the `TypeError` and surface the prompt through the native API anyway (`getUserMedia`, `requestMIDIAccess`, …), so they work cross-browser.
+- **Passive** getters have no native trigger to fall back on, so they **normalize** the `TypeError` to a `NotSupportedError` `DOMException`, preserving the "always a `DOMException`" guarantee. (`getPushPermission` does the same when `push` can't be queried at all.)
+- **`checkPermission`** reports the raw state, so it propagates the original `query()` error for callers to inspect.
+
+## API reference
+
+### Inspect the current state
+
+#### `checkPermission`
+
+Resolves immediately with the current permission state (`'granted'`, `'denied'` or `'prompt'`). Unlike `getPermission`, it never waits for user interaction and never rejects on `'denied'`. It rejects when the Permissions API is unsupported, and otherwise propagates any error from `navigator.permissions.query()` (e.g. an unrecognized permission name). Useful to read the current state upfront — show a banner, disable a button, branch UI logic — without triggering a prompt.
+
+Accepts a permission name or a full `PermissionQueryDescriptor` (see [Permission name or descriptor](#permission-name-or-descriptor)).
+
+```javascript
+import { checkPermission } from '@untemps/user-permissions-utils'
+
+const init = async () => {
+	try {
+		const state = await checkPermission('microphone') // 'granted' | 'denied' | 'prompt'
+		if (state === 'granted') {
+			// permission already available — start straight away
+		} else if (state === 'prompt') {
+			// show a button that calls getPermission/getUserMediaStream on click
+		}
+	} catch (error) {
+		// Thrown when the Permissions API is unsupported or the query fails
+		console.error(error)
+	}
+}
+
+// Permissions that need extra query members use the descriptor form:
+const pushState = await checkPermission({ name: 'push', userVisibleOnly: true })
+```
+
+#### `watchPermission`
+
+Subscribes to a permission's live state and calls `onChange` on every transition. Where `checkPermission` reads the state **once** and `getPermission` waits a **single** time for `'granted'`, this is a **continuous observer** wrapping `navigator.permissions.query()` and its `change` event — so you never reach for the raw browser API. Like `query()`, it never displays a dialog; it only reports the state as it changes (e.g. once `getUserMediaStream` or an active getter surfaces the real prompt and the user responds).
+
+By default it emits the current state immediately (so a single call replaces a `checkPermission` read followed by a manual subscription), then on every `change`. Pass `emitImmediately: false` to receive transitions only. Accepts a permission name or a full `PermissionQueryDescriptor` (see [Permission name or descriptor](#permission-name-or-descriptor)).
+
+The subscription lives until the optional `signal` aborts, at which point the `change` listener is removed. Omit the `signal` for a watch that lasts the page's lifetime. If your `onChange` throws on the upfront emit, the returned promise rejects and the `change` listener is removed first, so a throwing emit never leaves a subscription behind.
+
+```javascript
+import { watchPermission } from '@untemps/user-permissions-utils'
+
+const controller = new AbortController()
+
+await watchPermission(
+	'microphone',
+	(state) => {
+		// 'granted' | 'denied' | 'prompt' — keep a banner/button in sync
+		updateUI(state)
+	},
+	{ signal: controller.signal }
+)
+
+// Stop watching (removes the underlying change listener)
+controller.abort()
+```
+
+### Wait for a grant
+
+#### `getPermission`
 
 Watches a permission and resolves with `'granted'` once it is granted. It is a **passive** watcher built on `navigator.permissions.query()`, so **it never displays a permission dialog**: an already-`'granted'` state resolves right away, while a `'denied'` state rejects with a `NotAllowedError` `DOMException`.
 
-When the state is `'prompt'`, `getPermission` waits for the `change` event — which only fires once _something else_ triggers the real request (e.g. `getUserMediaStream`, `geolocation.getCurrentPosition`) and the user responds. Since nothing transitions a `'prompt'` state on its own, **the wait must be bounded**: pass a `timeout` (rejects with a `TimeoutError` once elapsed), a `signal`, or both. If you provide neither while the state is `'prompt'`, the promise rejects immediately with an `InvalidStateError` instead of hanging forever.
+When the state is `'prompt'`, `getPermission` waits for the `change` event — which only fires once _something else_ triggers the real request (e.g. `getUserMediaStream`, `geolocation.getCurrentPosition`) and the user responds. The wait must therefore be **bounded** (see [The bounded-wait contract](#the-bounded-wait-contract)): pass a `timeout`, a `signal`, or both.
 
-To actually surface a permission dialog, use one of the **active** dedicated getters below (e.g. `getCameraPermission`, `getGeolocationPermission`) or `getUserMediaStream` — `getPermission` itself only observes the state.
+To actually surface a permission dialog, use one of the [active getters](#active-getters) or [`getUserMediaStream`](#getusermediastream) — `getPermission` itself only observes the state.
 
 ```javascript
 import { getPermission } from '@untemps/user-permissions-utils'
 
-const init = async () => {
-    try {
-        // Resolves immediately if already granted, otherwise waits up to 5s
-        await getPermission('microphone', { timeout: 5000 })
-        ...
-    } catch (error) {
-        console.error(error)
-    }
-}
+// Resolves immediately if already granted, otherwise waits up to 5s
+await getPermission('microphone', { timeout: 5000 })
 ```
-
-To cancel a pending permission wait:
 
 ```javascript
 import { getPermission } from '@untemps/user-permissions-utils'
@@ -61,24 +194,35 @@ import { getPermission } from '@untemps/user-permissions-utils'
 const controller = new AbortController()
 
 const init = async () => {
-    try {
-        await getPermission('microphone', { signal: controller.signal })
-        ...
-    } catch (error) {
-        if (error.name === 'AbortError') return
-        console.error(error)
-    }
+	try {
+		await getPermission('microphone', { signal: controller.signal })
+	} catch (error) {
+		if (error.name === 'AbortError') return
+		console.error(error)
+	}
 }
 
 // Cancel while still waiting for the permission to be granted
 controller.abort()
 ```
 
-**Dedicated permission getters:**
+#### Passive getters (`push` & `clipboard`)
 
-For permissions with a fixed name, dedicated wrappers spare you from typing (and mistyping) the permission string — and, for most of them, surface the prompt for you so you never reach for the native browser API. All forward the same `{ signal?, timeout? }` options and resolve with `'granted'`.
+These getters only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library can't trigger them from a permission name alone (see [Passive vs active](#passive-vs-active)). The [bounded-wait](#the-bounded-wait-contract) requirement on `'prompt'` therefore applies — pass `signal` and/or `timeout`. All forward the same `{ signal?, timeout? }` options and resolve with `'granted'`.
 
-**Active getters** read the current state and, on `'prompt'`, fire the matching native API to acquire the permission, resolving once granted (or rejecting on denial / timeout / abort). For most this surfaces the real browser dialog, but a few are granted heuristically or by policy and resolve without one (see the note below):
+| Function                      | Permission name     | Why it stays passive                                        |
+| ----------------------------- | ------------------- | ----------------------------------------------------------- |
+| `getPushPermission`           | `'push'`            | needs a registered service worker and a VAPID key           |
+| `getClipboardReadPermission`  | `'clipboard-read'`  | the only way to prompt is to read the user's clipboard      |
+| `getClipboardWritePermission` | `'clipboard-write'` | the only way to prompt is to overwrite the user's clipboard |
+
+Trigger the real request yourself (e.g. `registration.pushManager.subscribe(...)`, `navigator.clipboard.read()`), then let the passive getter resolve. `getPushPermission` queries `push` with `userVisibleOnly: true`, as Chromium requires.
+
+### Request a permission
+
+#### Active getters
+
+For permissions with a fixed name, these wrappers spare you from typing (and mistyping) the permission string — and surface the prompt for you, so you never reach for the native browser API. Each reads the current state and, on `'prompt'`, fires the matching native API to acquire the permission, resolving once granted (or rejecting on denial / timeout / abort). All forward the same `{ signal?, timeout? }` options and resolve with `'granted'`.
 
 | Function                         | Permission name        | Acquired via                                    |
 | -------------------------------- | ---------------------- | ----------------------------------------------- |
@@ -94,117 +238,24 @@ For permissions with a fixed name, dedicated wrappers spare you from typing (and
 ```javascript
 import { getCameraPermission } from '@untemps/user-permissions-utils'
 
-const init = async () => {
-    try {
-        // Surfaces the camera prompt and resolves once granted (times out after 20s)
-        await getCameraPermission({ timeout: 20000 })
-        ...
-    } catch (error) {
-        console.error(error)
-    }
-}
+// Surfaces the camera prompt and resolves once granted (times out after 20s)
+await getCameraPermission({ timeout: 20000 })
 ```
 
-> Use `getUserMediaStream` instead of `getCameraPermission` / `getMicrophonePermission` when you need the resulting `MediaStream` rather than just the grant.
+A few things to keep in mind, all detailed in [Concepts](#concepts):
 
-> **A few active getters resolve without ever showing a dialog.** `persistent-storage`, `midi`, `screen-wake-lock` and `storage-access` are granted heuristically or by policy rather than through an explicit prompt: Chromium decides `persistent-storage` heuristically with no dialog, non-sysex `midi` is often auto-granted, `screen-wake-lock` is policy-gated, and `storage-access` may settle without a visible prompt depending on browser and context. They still fire the matching native API listed above — it just may not surface a dialog — and resolve with `'granted'` all the same.
+- **Need the stream, not just the grant?** Use [`getUserMediaStream`](#getusermediastream) instead of `getCameraPermission` / `getMicrophonePermission`.
+- **Some resolve without a dialog** (`persistent-storage`, `midi`, `screen-wake-lock`, `storage-access`) — see [Passive vs active](#passive-vs-active).
+- **Pass a `timeout` for unattended flows** — `signal` / `timeout` stop the wait, not the prompt; see [The bounded-wait contract](#the-bounded-wait-contract).
+- **They work cross-browser** by falling through to the native API on non-queryable names — see [Cross-browser fallthrough](#cross-browser-fallthrough).
 
-> **`signal` / `timeout` on the active getters stop the _wait_, not the native prompt.** Aborting or timing out rejects the returned promise, but the browser cannot cancel a dialog it already surfaced: the prompt stays open and a late grant is reflected only in the live permission state (e.g. via `checkPermission`), not in the rejected promise. The one exception is `getCameraPermission` / `getMicrophonePermission`, which forward the signal into `getUserMediaStream` and tear the acquired stream down so the camera/microphone is never left active.
+### Acquire a media stream
 
-> **Pass a `timeout` for unattended flows.** Unlike the passive getters (and `getPermission`), the active getters don't require `signal`/`timeout` on `'prompt'` — the native prompt they surface settles the wait when the user responds. But if the user neither accepts nor dismisses, the wait lasts as long as the prompt does. Add a `timeout` (and/or `signal`) whenever you can't rely on a timely response.
+#### `getUserMediaStream`
 
-> **Non-queryable permission names fall through to the native API.** Some browsers support a device but reject `navigator.permissions.query()` for its name with a `TypeError` (e.g. Firefox / Safari for `camera`, `microphone`, `midi`). The active getters and `getUserMediaStream` catch that and surface the prompt through the native API anyway (`getUserMedia`, `requestMIDIAccess`, …) instead of failing, so they work cross-browser. The passive getters have no native trigger to fall back on, so they instead **normalize** the `TypeError` to a `NotSupportedError` `DOMException` — keeping the guarantee that every getter rejects with a `DOMException`. Only `checkPermission`, which reports the raw state, still propagates the original `query()` error so callers can inspect it.
+Resolves with a `MediaStream` once the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation and an optional `timeout` (in milliseconds) that rejects with a `TimeoutError` once it elapses — the same bounded-wait ergonomics the active getters offer, handy for unattended flows. If the signal aborts or the timeout fires while acquisition is still in flight, a stream that resolves afterwards is torn down automatically (its tracks are stopped), so the camera or microphone is never left active.
 
-> **`getUserMediaStream` treats the whole Permissions API as best-effort.** The query only lets it short-circuit a _previously denied_ permission; it is not required to acquire a stream. So on browsers that expose `navigator.mediaDevices.getUserMedia` but not `navigator.permissions` at all (e.g. older Safari), `getUserMediaStream` skips the query entirely and goes straight to `getUserMedia` — which surfaces the real prompt or rejects on its own — rather than throwing `NotSupportedError`. It requires only MediaDevices.
-
-**Passive getters** only _watch_ the state (exactly like `getPermission`) and never surface a dialog, because the library cannot trigger them from a permission name alone without consumer-owned infrastructure or a privacy-sensitive side effect. The **bounded-wait** requirement on `'prompt'` therefore applies (pass `signal` and/or `timeout`):
-
-| Function                      | Permission name     | Why it stays passive                                        |
-| ----------------------------- | ------------------- | ----------------------------------------------------------- |
-| `getPushPermission`           | `'push'`            | needs a registered service worker and a VAPID key           |
-| `getClipboardReadPermission`  | `'clipboard-read'`  | the only way to prompt is to read the user's clipboard      |
-| `getClipboardWritePermission` | `'clipboard-write'` | the only way to prompt is to overwrite the user's clipboard |
-
-Trigger those yourself (e.g. `registration.pushManager.subscribe(...)`, `navigator.clipboard.read()`), then let the passive getter resolve.
-
-> `getPushPermission` queries `push` with `userVisibleOnly: true` because Chromium rejects the descriptor otherwise (silent push is not allowed). On browsers that can't query `push` at all (Firefox / Safari), the resulting `TypeError` is normalized to a `NotSupportedError` `DOMException` like the other passive getters.
-
-> `clipboard-read` and `clipboard-write` are valid permission names at runtime but are not (yet) part of the DOM `PermissionName` type, so those two wrappers assert the name internally.
-
-`checkPermission`:
-
-Returns a promise resolved with the current permission state (`'granted'`, `'denied'` or `'prompt'`) immediately. Unlike `getPermission`, it never waits for user interaction and never rejects on `'denied'`. It rejects when the Permissions API is unsupported, and otherwise propagates any error from `navigator.permissions.query()` (e.g. an unrecognized permission name). Useful to read the current state upfront (show a permission banner, disable a button, branch UI logic) without triggering a prompt.
-
-Like `getPermission`, it accepts either a permission name or a full `PermissionQueryDescriptor`, so you can read permissions that need extra query members — notably `push`, which Chromium only queries with `userVisibleOnly: true`:
-
-```javascript
-import { checkPermission } from '@untemps/user-permissions-utils'
-
-const state = await checkPermission({ name: 'push', userVisibleOnly: true }) // 'granted' | 'denied' | 'prompt'
-```
-
-```javascript
-import { checkPermission } from '@untemps/user-permissions-utils'
-
-const init = async () => {
-    try {
-        const state = await checkPermission('microphone') // 'granted' | 'denied' | 'prompt'
-        if (state === 'granted') {
-            // permission already available — start straight away
-            ...
-        } else if (state === 'prompt') {
-            // show a button that calls getPermission/getUserMediaStream on click
-            ...
-        }
-    } catch (error) {
-        // Thrown when the Permissions API is unsupported or the query fails
-        console.error(error)
-    }
-}
-```
-
-`watchPermission`:
-
-Subscribes to a permission's live state and calls `onChange` on every transition. Where `checkPermission` reads the state **once** and `getPermission` waits a **single** time for `'granted'`, this is a **continuous observer**: it wraps `navigator.permissions.query()` and its `change` event, so you never reach for the raw browser API. Like `query()`, it never displays a dialog — it only reports the state as it changes (e.g. once `getUserMediaStream` or a dedicated getter surfaces the real prompt and the user responds).
-
-By default it emits the current state immediately (so a single call replaces a `checkPermission` read followed by a manual subscription), then on every `change`. Pass `emitImmediately: false` to receive transitions only.
-
-Like `getPermission` and `checkPermission`, the first argument is either a permission name or a full `PermissionQueryDescriptor`, so you can watch permissions that need extra query members — e.g. `watchPermission({ name: 'push', userVisibleOnly: true }, onChange)`.
-
-```javascript
-import { watchPermission } from '@untemps/user-permissions-utils'
-
-const init = async () => {
-	try {
-		await watchPermission('microphone', (state) => {
-			// 'granted' | 'denied' | 'prompt' — keep a banner/button in sync
-			updateUI(state)
-		})
-	} catch (error) {
-		// Thrown when the Permissions API is unsupported or the query fails
-		console.error(error)
-	}
-}
-```
-
-The subscription lives until the optional `signal` aborts, at which point the `change` listener is removed. Omit the `signal` for a watch that lasts the page's lifetime. If your `onChange` throws on the upfront emit, the returned promise rejects and the `change` listener is removed first, so a throwing emit never leaves a subscription behind.
-
-```javascript
-import { watchPermission } from '@untemps/user-permissions-utils'
-
-const controller = new AbortController()
-
-await watchPermission('microphone', (state) => updateUI(state), { signal: controller.signal })
-
-// Stop watching (removes the underlying change listener)
-controller.abort()
-```
-
-`getUserMediaStream`:
-
-Returns a promise resolved when the permission is granted and the stream is retrieved. Accepts an optional `signal` to cancel the entire operation and an optional `timeout` (in milliseconds) that rejects with a `TimeoutError` once it elapses — the same bounded-wait ergonomics the active getters offer, handy for unattended flows. If the signal aborts or the timeout fires while acquisition is still in flight, a stream that resolves afterwards is torn down automatically (its tracks are stopped), so the camera or microphone is never left active.
-
-The `permissionName` and `mediaStreamConstraints` must match the same media device:
+It requires only MediaDevices and treats the Permissions API as best-effort (see [Errors and feature detection](#errors-and-feature-detection)). The `permissionName` and `mediaStreamConstraints` must match the same media device:
 
 | `permissionName` | `mediaStreamConstraints` |
 | ---------------- | ------------------------ |
@@ -215,31 +266,16 @@ The `permissionName` and `mediaStreamConstraints` must match the same media devi
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
 
 // Microphone
-const init = async () => {
-    try {
-        const stream = await getUserMediaStream('microphone', { audio: true })
-        const audioContext = new AudioContext()
-        const streamNode = audioContext.createMediaStreamSource(stream)
-        ...
-    } catch (error) {
-        console.error(error)
-    }
-}
+const stream = await getUserMediaStream('microphone', { audio: true })
+const audioContext = new AudioContext()
+const streamNode = audioContext.createMediaStreamSource(stream)
 
 // Camera
-const initCamera = async () => {
-    try {
-        const stream = await getUserMediaStream('camera', { video: true })
-        const videoElement = document.querySelector('video')
-        videoElement.srcObject = stream
-        ...
-    } catch (error) {
-        console.error(error)
-    }
-}
+const videoStream = await getUserMediaStream('camera', { video: true })
+document.querySelector('video').srcObject = videoStream
 ```
 
-To cancel a pending stream acquisition:
+Cancel a pending acquisition (permission wait or stream retrieval) with a `signal`:
 
 ```javascript
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
@@ -247,37 +283,49 @@ import { getUserMediaStream } from '@untemps/user-permissions-utils'
 const controller = new AbortController()
 
 const init = async () => {
-    try {
-        const stream = await getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
-        ...
-    } catch (error) {
-        if (error.name === 'AbortError') return
-        console.error(error)
-    }
+	try {
+		const stream = await getUserMediaStream('microphone', { audio: true }, { signal: controller.signal })
+	} catch (error) {
+		if (error.name === 'AbortError') return
+		console.error(error)
+	}
 }
 
-// Cancel the operation at any point (permission wait or stream acquisition)
 controller.abort()
 ```
 
-To time-box an unattended acquisition without wiring your own `AbortController` and timer, pass a `timeout` (it can be combined with a `signal`):
+Or time-box an unattended acquisition with a `timeout` (combinable with a `signal`):
 
 ```javascript
 import { getUserMediaStream } from '@untemps/user-permissions-utils'
 
 const init = async () => {
-    try {
-        // Reject with a `TimeoutError` if the stream isn't acquired within 10s
-        const stream = await getUserMediaStream('camera', { video: true }, { timeout: 10000 })
-        ...
-    } catch (error) {
-        if (error.name === 'TimeoutError') return // no response in time — the camera is never left active
-        console.error(error)
-    }
+	try {
+		// Reject with a `TimeoutError` if the stream isn't acquired within 10s
+		const stream = await getUserMediaStream('camera', { video: true }, { timeout: 10000 })
+	} catch (error) {
+		if (error.name === 'TimeoutError') return // no response in time — the camera is never left active
+		console.error(error)
+	}
 }
 ```
 
-> **Feature detection:** there are no `is…Supported` helpers. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable — the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), and, for the active getters, the native API they use to surface the prompt (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). That last case is normalized too, so a missing trigger API never leaks a raw `TypeError`. `getUserMediaStream` is the exception: it requires only MediaDevices and treats the Permissions API as best-effort, so a missing `navigator.permissions` skips the denial short-circuit instead of failing (see below). To probe support upfront, call `checkPermission(name)` and catch — it rejects when the Permissions API is unsupported and propagates `navigator.permissions.query()` errors (e.g. an unrecognized permission name).
+## TypeScript
+
+This package is written in TypeScript and ships its own type declarations — no extra `@types/...` package is required. The option types are exported for convenience:
+
+```typescript
+import {
+	getPermission,
+	getUserMediaStream,
+	type GetPermissionOptions,
+	type GetUserMediaStreamOptions,
+	type WatchPermissionOptions,
+	type PermissionQueryDescriptor,
+} from '@untemps/user-permissions-utils'
+```
+
+`permissionName` is typed as the DOM `PermissionName` (e.g. `'microphone'`, `'camera'`) and `mediaStreamConstraints` as the DOM `MediaStreamConstraints`.
 
 ## Development
 
