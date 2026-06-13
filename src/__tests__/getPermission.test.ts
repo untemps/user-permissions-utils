@@ -80,6 +80,37 @@ describe('getPermission', () => {
 			await expect(getPermission('microphone')).rejects.toEqual(new Error('ERR'))
 		})
 
+		// A passive watcher can't fall through to a native trigger (unlike acquirePermission /
+		// getUserMediaStream), so a non-queryable name — or `push` rejected for lacking
+		// `userVisibleOnly` — must surface as a `DOMException`, not the raw `TypeError`.
+		it('normalizes a TypeError from query() to a NotSupportedError DOMException', async () => {
+			mockPermissionsQuery.mockImplementationOnce(() => {
+				throw new TypeError("Failed to read the 'userVisibleOnly' property")
+			})
+
+			const promise = getPermission('push')
+			await expect(promise).rejects.toBeInstanceOf(DOMException)
+			await expect(promise).rejects.toMatchObject({ name: 'NotSupportedError' })
+		})
+
+		// A non-TypeError must still propagate unchanged — only the non-queryable `TypeError` is normalized.
+		it('propagates a non-TypeError query() rejection unchanged', async () => {
+			const error = new DOMException('boom', 'SecurityError')
+			mockPermissionsQuery.mockRejectedValueOnce(error)
+			await expect(getPermission('microphone')).rejects.toBe(error)
+		})
+
+		// Permissions that need extra descriptor members (e.g. `push` requires `userVisibleOnly: true`
+		// on Chromium) are passed as a full descriptor, which must reach `query()` verbatim.
+		it('forwards a full descriptor (push userVisibleOnly) to query()', async () => {
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
+			status.state = 'granted'
+			mockPermissionsQuery.mockResolvedValueOnce(status)
+
+			await expect(getPermission({ name: 'push', userVisibleOnly: true })).resolves.toBe('granted')
+			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'push', userVisibleOnly: true })
+		})
+
 		describe('bounded wait (prompt state)', () => {
 			it('rejects immediately when state is prompt and neither signal nor timeout is provided', async () => {
 				const status = new PermissionStatus() as unknown as MockPermissionStatus

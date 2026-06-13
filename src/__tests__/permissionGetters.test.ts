@@ -26,7 +26,16 @@ type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 // suite drives every getter through the contract they all share — guard, `'granted'` short-circuit
 // and options forwarding — leaving the active trigger/acquire mechanics to `_acquirePermission` and
 // `_triggers` tests. The `passive` flag marks the three getters that intentionally never prompt.
-const getters: ReadonlyArray<{ label: string; getter: PermissionGetter; name: string; passive?: true }> = [
+// `descriptor` is the exact object the getter is expected to pass to `navigator.permissions.query()`;
+// it defaults to `{ name }` and is only spelled out for getters that add extra descriptor members
+// (e.g. `getPushPermission` must query with `userVisibleOnly: true`).
+const getters: ReadonlyArray<{
+	label: string
+	getter: PermissionGetter
+	name: string
+	passive?: true
+	descriptor?: PermissionDescriptor
+}> = [
 	{ label: 'getCameraPermission', getter: getCameraPermission, name: 'camera' },
 	{ label: 'getMicrophonePermission', getter: getMicrophonePermission, name: 'microphone' },
 	{ label: 'getGeolocationPermission', getter: getGeolocationPermission, name: 'geolocation' },
@@ -35,7 +44,13 @@ const getters: ReadonlyArray<{ label: string; getter: PermissionGetter; name: st
 	{ label: 'getPersistentStoragePermission', getter: getPersistentStoragePermission, name: 'persistent-storage' },
 	{ label: 'getScreenWakeLockPermission', getter: getScreenWakeLockPermission, name: 'screen-wake-lock' },
 	{ label: 'getStorageAccessPermission', getter: getStorageAccessPermission, name: 'storage-access' },
-	{ label: 'getPushPermission', getter: getPushPermission, name: 'push', passive: true },
+	{
+		label: 'getPushPermission',
+		getter: getPushPermission,
+		name: 'push',
+		passive: true,
+		descriptor: { name: 'push', userVisibleOnly: true } as PermissionDescriptor,
+	},
 	{ label: 'getClipboardReadPermission', getter: getClipboardReadPermission, name: 'clipboard-read', passive: true },
 	{
 		label: 'getClipboardWritePermission',
@@ -67,13 +82,26 @@ describe('dedicated permission getters', () => {
 
 		// On an already-`'granted'` state both kinds short-circuit to `'granted'` without ever firing
 		// a trigger, so this asserts the hardcoded name for all eleven without mocking native APIs.
-		it.each(getters)('$label queries "$name" and resolves with "granted"', async ({ getter, name }) => {
+		it.each(getters)('$label queries "$name" and resolves with "granted"', async ({ getter, name, descriptor }) => {
 			const status = new PermissionStatus() as unknown as MockPermissionStatus
 			status.state = 'granted'
 			mockPermissionsQuery.mockResolvedValueOnce(status)
 
 			await expect(getter()).resolves.toBe('granted')
-			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name })
+			expect(mockPermissionsQuery).toHaveBeenCalledWith(descriptor ?? { name })
+		})
+
+		// End-to-end guard for the push bug (#167): `query({ name: 'push' })` throws a `TypeError` on
+		// browsers that can't query the name (Firefox/Safari) — the passive getter must surface a
+		// `NotSupportedError` `DOMException`, never the raw `TypeError`.
+		it('getPushPermission normalizes a query() TypeError to a NotSupportedError DOMException', async () => {
+			mockPermissionsQuery.mockImplementationOnce(() => {
+				throw new TypeError("'push' is not a valid enum value of type PermissionName")
+			})
+
+			const promise = getPushPermission()
+			await expect(promise).rejects.toBeInstanceOf(DOMException)
+			await expect(promise).rejects.toMatchObject({ name: 'NotSupportedError' })
 		})
 
 		describe('options forwarding', () => {
