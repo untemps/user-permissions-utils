@@ -1,4 +1,5 @@
 import checkPermission from '../checkPermission'
+import { asPermissionName } from '../getPermission'
 import {
 	setNavigatorApiUnsupported,
 	restoreNavigatorApi,
@@ -54,6 +55,22 @@ describe('checkPermission', () => {
 			mockPermissionsQuery.mockResolvedValueOnce(status)
 			await checkPermission('camera')
 			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'camera' })
+		})
+
+		it('forwards a full descriptor (push userVisibleOnly) to query()', async () => {
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
+			status.state = 'granted'
+			mockPermissionsQuery.mockResolvedValueOnce(status)
+			await expect(checkPermission({ name: 'push', userVisibleOnly: true })).resolves.toBe('granted')
+			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'push', userVisibleOnly: true })
+		})
+
+		it('queries a clipboard permission name passed as a string', async () => {
+			const status = new PermissionStatus() as unknown as MockPermissionStatus
+			status.state = 'prompt'
+			mockPermissionsQuery.mockResolvedValueOnce(status)
+			await expect(checkPermission(asPermissionName('clipboard-read'))).resolves.toBe('prompt')
+			expect(mockPermissionsQuery).toHaveBeenCalledWith({ name: 'clipboard-read' })
 		})
 
 		it('throws error', async () => {
