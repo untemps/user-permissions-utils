@@ -80,10 +80,23 @@ describe('getPermission', () => {
 			await expect(getPermission('microphone')).rejects.toEqual(new Error('ERR'))
 		})
 
-		it('normalizes a TypeError from query() to a NotSupportedError DOMException', async () => {
-			mockPermissionsQuery.mockImplementationOnce(() => {
-				throw new TypeError("Failed to read the 'userVisibleOnly' property")
-			})
+		it.each([
+			{
+				mode: 'throws synchronously',
+				fail: () =>
+					mockPermissionsQuery.mockImplementationOnce(() => {
+						throw new TypeError("Failed to read the 'userVisibleOnly' property")
+					}),
+			},
+			{
+				mode: 'rejects its promise',
+				fail: () =>
+					mockPermissionsQuery.mockRejectedValueOnce(
+						new TypeError("Failed to read the 'userVisibleOnly' property")
+					),
+			},
+		])('normalizes a TypeError from query() ($mode) to a NotSupportedError DOMException', async ({ fail }) => {
+			fail()
 
 			const promise = getPermission('push')
 			await expect(promise).rejects.toBeInstanceOf(DOMException)
