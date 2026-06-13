@@ -13,6 +13,7 @@ import {
 	checkPermission,
 	watchPermission,
 	type GetPermissionOptions,
+	type PermissionQueryDescriptor,
 } from '../src/index'
 
 type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
@@ -23,6 +24,10 @@ interface PermissionEntry {
 	// Passive getters (push, clipboard) never surface a dialog — the library cannot trigger them
 	// without consumer-owned infrastructure or a privacy-sensitive side effect — so they only watch.
 	passive?: boolean
+	// Some permissions need extra query members to be readable: Chromium rejects `{ name: 'push' }`
+	// without `userVisibleOnly: true`. When set, this descriptor is passed to checkPermission /
+	// watchPermission instead of the bare name.
+	query?: PermissionQueryDescriptor
 }
 
 interface ApiSupport {
@@ -50,7 +55,7 @@ const PERMISSIONS: PermissionEntry[] = [
 	{ name: 'persistent-storage', getter: getPersistentStoragePermission },
 	{ name: 'screen-wake-lock', getter: getScreenWakeLockPermission },
 	{ name: 'storage-access', getter: getStorageAccessPermission },
-	{ name: 'push', getter: getPushPermission, passive: true },
+	{ name: 'push', getter: getPushPermission, passive: true, query: { name: 'push', userVisibleOnly: true } },
 	{ name: 'clipboard-read', getter: getClipboardReadPermission, passive: true },
 	{ name: 'clipboard-write', getter: getClipboardWritePermission, passive: true },
 ]
@@ -135,19 +140,23 @@ function initPermissionStates(entries: PermissionEntry[]): void {
 		row.append(dot, label, value)
 		container.append(row)
 
-		watchPermissionState(entry.name)
+		watchPermissionState(entry)
 	})
 }
 
-async function watchPermissionState(name: string): Promise<void> {
+async function watchPermissionState(entry: PermissionEntry): Promise<void> {
+	const { name } = entry
+	// Pass the full descriptor when the permission needs extra query members (e.g. push); otherwise the
+	// bare name. clipboard-* aren't in the DOM PermissionName union yet, hence the cast.
+	const query = entry.query ?? (name as PermissionName)
 	try {
 		// Read the current state upfront through the library guard — no prompt, no waiting
-		const state = await checkPermission(name as PermissionName)
+		const state = await checkPermission(query)
 		renderPermissionState(name, state)
 		log(`checkPermission("${name}") → ${state}`, STATE_LOG_TYPE[state])
 
 		await watchPermission(
-			name as PermissionName,
+			query,
 			(state) => {
 				renderPermissionState(name, state)
 				log(`permission "${name}" changed → ${state}`, STATE_LOG_TYPE[state])
