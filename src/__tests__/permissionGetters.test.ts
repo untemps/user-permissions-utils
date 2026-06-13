@@ -88,15 +88,34 @@ describe('dedicated permission getters', () => {
 			expect(mockPermissionsQuery).toHaveBeenCalledWith(descriptor ?? { name })
 		})
 
-		it('getPushPermission normalizes a query() TypeError to a NotSupportedError DOMException', async () => {
-			mockPermissionsQuery.mockImplementationOnce(() => {
-				throw new TypeError("'push' is not a valid enum value of type PermissionName")
-			})
+		// Firefox/Safari can't query `push`; the failure reaches us as a *rejected* promise, not a
+		// synchronous throw. Cover both shapes so this regression (the bug behind #167) stays caught
+		// however the browser surfaces it.
+		it.each([
+			{
+				mode: 'throws synchronously',
+				fail: () =>
+					mockPermissionsQuery.mockImplementationOnce(() => {
+						throw new TypeError("'push' is not a valid enum value of type PermissionName")
+					}),
+			},
+			{
+				mode: 'rejects its promise',
+				fail: () =>
+					mockPermissionsQuery.mockRejectedValueOnce(
+						new TypeError("'push' is not a valid enum value of type PermissionName")
+					),
+			},
+		])(
+			'getPushPermission normalizes a query() TypeError ($mode) to a NotSupportedError DOMException',
+			async ({ fail }) => {
+				fail()
 
-			const promise = getPushPermission()
-			await expect(promise).rejects.toBeInstanceOf(DOMException)
-			await expect(promise).rejects.toMatchObject({ name: 'NotSupportedError' })
-		})
+				const promise = getPushPermission()
+				await expect(promise).rejects.toBeInstanceOf(DOMException)
+				await expect(promise).rejects.toMatchObject({ name: 'NotSupportedError' })
+			}
+		)
 
 		describe('options forwarding', () => {
 			// Parametrized over every getter: an already-aborted signal makes both `acquirePermission`
