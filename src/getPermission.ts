@@ -5,11 +5,6 @@ export interface GetPermissionOptions {
 	timeout?: number
 }
 
-// The DOM `PermissionDescriptor` only declares `name`, but some permissions need extra members to be
-// queryable — notably `push`, which Chromium rejects unless `userVisibleOnly: true` is supplied
-// (silent push is not allowed). Widening the descriptor lets a dedicated getter pass those members
-// through, mirroring how the active primitive `acquirePermission` receives a permission-specific
-// `trigger`: the name-specific knowledge stays in the getter, the primitive stays generic.
 export interface PermissionQueryDescriptor extends PermissionDescriptor {
 	userVisibleOnly?: boolean
 }
@@ -49,12 +44,6 @@ const getPermission = async (
 	try {
 		permissionStatus = await navigator.permissions.query(descriptor)
 	} catch (error) {
-		// A passive watcher has no native trigger to fall through to (unlike `acquirePermission` /
-		// `getUserMediaStream`, which retry via `getUserMedia` / `requestMIDIAccess`). When the browser
-		// can't query the name — a non-queryable descriptor (Firefox/Safari) or `push` rejected for
-		// lacking `userVisibleOnly` — it throws a `TypeError`. Normalize it to a `DOMException` so the
-		// library never leaks a raw `TypeError`, honoring the contract that every entry point throws a
-		// `DOMException`. Any other query error propagates unchanged.
 		if (error instanceof TypeError) {
 			throw new DOMException(`Permission "${descriptor.name}" cannot be queried`, 'NotSupportedError')
 		}

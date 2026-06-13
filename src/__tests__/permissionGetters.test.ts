@@ -26,9 +26,6 @@ type PermissionGetter = (options?: GetPermissionOptions) => Promise<'granted'>
 // suite drives every getter through the contract they all share — guard, `'granted'` short-circuit
 // and options forwarding — leaving the active trigger/acquire mechanics to `_acquirePermission` and
 // `_triggers` tests. The `passive` flag marks the three getters that intentionally never prompt.
-// `descriptor` is the exact object the getter is expected to pass to `navigator.permissions.query()`;
-// it defaults to `{ name }` and is only spelled out for getters that add extra descriptor members
-// (e.g. `getPushPermission` must query with `userVisibleOnly: true`).
 const getters: ReadonlyArray<{
 	label: string
 	getter: PermissionGetter
@@ -91,9 +88,6 @@ describe('dedicated permission getters', () => {
 			expect(mockPermissionsQuery).toHaveBeenCalledWith(descriptor ?? { name })
 		})
 
-		// End-to-end guard for the push bug (#167): `query({ name: 'push' })` throws a `TypeError` on
-		// browsers that can't query the name (Firefox/Safari) — the passive getter must surface a
-		// `NotSupportedError` `DOMException`, never the raw `TypeError`.
 		it('getPushPermission normalizes a query() TypeError to a NotSupportedError DOMException', async () => {
 			mockPermissionsQuery.mockImplementationOnce(() => {
 				throw new TypeError("'push' is not a valid enum value of type PermissionName")
