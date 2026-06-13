@@ -1,3 +1,45 @@
+# [2.0.0](https://github.com/untemps/user-permissions-utils/compare/v1.3.4...v2.0.0) (2026-06-13)
+
+
+### Bug Fixes
+
+* Always bump major on breaking changes ([ff89195](https://github.com/untemps/user-permissions-utils/commit/ff89195060bf34c2904117d75f37aaff115ee974))
+* getPushPermission queries push with userVisibleOnly and normalizes the non-queryable TypeError ([#169](https://github.com/untemps/user-permissions-utils/issues/169)) ([c597109](https://github.com/untemps/user-permissions-utils/commit/c597109961cedc51f0c691552360626f72a8996f))
+* Honour an abort before the denied check in getUserMediaStream ([#150](https://github.com/untemps/user-permissions-utils/issues/150)) ([7f8f580](https://github.com/untemps/user-permissions-utils/commit/7f8f58018f0bcbfa467338af6cace93b95fa6ffe))
+* Make getUserMediaStream require only MediaDevices, not the Permissions API ([#173](https://github.com/untemps/user-permissions-utils/issues/173)) ([b162e7e](https://github.com/untemps/user-permissions-utils/commit/b162e7e5c70e171c3883f8ecfd1e752a6f7dbf09))
+* Prevent getPermission from hanging on 'prompt' state and leaking a listener ([#135](https://github.com/untemps/user-permissions-utils/issues/135)) ([cf88c8d](https://github.com/untemps/user-permissions-utils/commit/cf88c8d86c60d49f2ca6f3a7640a3cbdc29e4bce))
+* Remove the change listener when watchPermission's upfront emit throws ([#155](https://github.com/untemps/user-permissions-utils/issues/155)) ([48b10fe](https://github.com/untemps/user-permissions-utils/commit/48b10fe8b9c533bb286313e1ee42a0ce6b6f96a8))
+* Standardize DOMException error names (NotAllowedError/NotSupportedError) ([#163](https://github.com/untemps/user-permissions-utils/issues/163)) ([318817b](https://github.com/untemps/user-permissions-utils/commit/318817bfcbe8a6de0b5a2e8053f00d6912067804))
+* Standardize geolocation non-denial failures to DOMException ([#164](https://github.com/untemps/user-permissions-utils/issues/164)) ([4da666c](https://github.com/untemps/user-permissions-utils/commit/4da666cdcfb7599836266bc13b12527e996376d3))
+* Stop late-resolving MediaStream tracks when getUserMediaStream is aborted ([#140](https://github.com/untemps/user-permissions-utils/issues/140)) ([c6e6e57](https://github.com/untemps/user-permissions-utils/commit/c6e6e5759d4f2e2d80a14de90b4cc5e5714d951c))
+* Surface the prompt when a permission name is not queryable (Firefox/Safari) ([#148](https://github.com/untemps/user-permissions-utils/issues/148)) ([18e8136](https://github.com/untemps/user-permissions-utils/commit/18e8136a96ee45104340ee32c7d688ae42c34283))
+
+
+### Features
+
+* Accept a PermissionQueryDescriptor in checkPermission & watchPermission ([#174](https://github.com/untemps/user-permissions-utils/issues/174)) ([96120dd](https://github.com/untemps/user-permissions-utils/commit/96120dd348298fbeedbdcfb72ae12b4e8c244b1c))
+* Add an optional timeout to getUserMediaStream ([#166](https://github.com/untemps/user-permissions-utils/issues/166)) ([1905d61](https://github.com/untemps/user-permissions-utils/commit/1905d61db3a50d75fd033c60532de82283518a85))
+* Add checkPermission utility to query current permission state ([#134](https://github.com/untemps/user-permissions-utils/issues/134)) ([d301703](https://github.com/untemps/user-permissions-utils/commit/d3017038010a390410fe3f2cee46f8b21da446fe))
+* Add dedicated permission functions wrapping getPermission ([#141](https://github.com/untemps/user-permissions-utils/issues/141)) ([26ad2c5](https://github.com/untemps/user-permissions-utils/commit/26ad2c51a582cc3f8a4c494006adf3e7e757fceb))
+* Add watchPermission to subscribe to live permission state changes ([#143](https://github.com/untemps/user-permissions-utils/issues/143)) ([d75afac](https://github.com/untemps/user-permissions-utils/commit/d75afac7561c121bc417478cccaa4205a1a9b245))
+* Migrate codebase to TypeScript ([#132](https://github.com/untemps/user-permissions-utils/issues/132)) ([c47f2ba](https://github.com/untemps/user-permissions-utils/commit/c47f2babd3125ac6a2dce79978649b4a44dbe346))
+
+
+### Performance Improvements
+
+* Avoid a redundant permissions query on the camera/microphone path ([#149](https://github.com/untemps/user-permissions-utils/issues/149)) ([2a27faf](https://github.com/untemps/user-permissions-utils/commit/2a27faf985b63b69df611aca651d91db37e37fb9))
+
+
+### BREAKING CHANGES
+
+* POSITION_UNAVAILABLE/TIMEOUT geolocation failures now reject with a DOMException (NotReadableError/TimeoutError) instead of the raw GeolocationPositionError. The numeric `code` moves from the top-level error to `error.cause.code` (the original GeolocationPositionError is preserved as the DOMException's `cause`).
+* Errors previously thrown with name 'NOT_ALLOWED_ERR' are now 'NotAllowedError', and 'NOT_SUPPORTED_ERR' is now 'NotSupportedError'. Consumers matching the old names must switch to the standard ones.
+* Removed the public `isNavigatorPermissionsSupported` and `isNavigatorMediaDevicesSupported` exports. Their existence checks are now inlined into `getPermission`, `acquirePermission`, `checkPermission` and `getUserMediaStream`, which still throw the same `NOT_SUPPORTED_ERR` DOMException when the API is absent — behaviour and error contract are unchanged. To detect support, call `checkPermission(name)` and catch (it rejects with `NOT_SUPPORTED_ERR` when the Permissions API is missing), or check `'permissions' in navigator` / `'mediaDevices' in navigator` directly.
+* `getPermission` no longer waits unboundedly on a `'prompt'` state and now honours an aborted `signal` on every resolved state.
+- On a `'prompt'` state with neither `signal` nor `timeout`, it rejects immediately with an `InvalidStateError` instead of returning a promise that never settles. Pass `{ timeout }` and/or `{ signal }` to bound the wait, or trigger the real prompt via `getUserMediaStream`.
+- An already-aborted (or aborted-during-query) `signal` now rejects with the signal's reason (e.g. `AbortError`) on every resolved state, including `'granted'`/`'denied'` — previously only the `'prompt'` wait checked it. Callers that abort only after the permission has settled are unaffected.
+* The package is now written in TypeScript and ships generated type declarations. Types may be stricter (narrower) for some consumers, though the public signatures are unchanged.
+
 ## [1.3.4](https://github.com/untemps/user-permissions-utils/compare/v1.3.3...v1.3.4) (2026-05-17)
 
 ## [1.3.3](https://github.com/untemps/user-permissions-utils/compare/v1.3.2...v1.3.3) (2026-05-17)
