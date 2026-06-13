@@ -1,3 +1,10 @@
+# [2.0.0-beta.19](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.18...v2.0.0-beta.19) (2026-06-13)
+
+
+### Bug Fixes
+
+* getPushPermission queries push with userVisibleOnly and normalizes the non-queryable TypeError ([#169](https://github.com/untemps/user-permissions-utils/issues/169)) ([b11bb6f](https://github.com/untemps/user-permissions-utils/commit/b11bb6f79f7996f8059f814a614ea439bc83b3c5))
+
 # [2.0.0-beta.18](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.17...v2.0.0-beta.18) (2026-06-12)
 
 
