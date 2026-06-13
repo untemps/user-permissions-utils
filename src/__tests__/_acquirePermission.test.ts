@@ -88,14 +88,14 @@ describe('acquirePermission', () => {
 		// the trigger still surfaces the real dialog instead of leaking the `TypeError`.
 		it.each([
 			{
-				mode: 'throws a TypeError synchronously',
+				mode: 'throws synchronously',
 				fail: () =>
 					mockPermissionsQuery.mockImplementationOnce(() => {
 						throw new TypeError("'camera' is not a valid enum value of type PermissionName")
 					}),
 			},
 			{
-				mode: 'rejects with a TypeError',
+				mode: 'rejects its promise',
 				fail: () =>
 					mockPermissionsQuery.mockRejectedValueOnce(
 						new TypeError("'camera' is not a valid enum value of type PermissionName")
