@@ -19,25 +19,26 @@ const getUserMediaStream = async (
 	mediaStreamConstraints: MediaStreamConstraints,
 	{ signal, timeout }: GetUserMediaStreamOptions = {}
 ): Promise<MediaStream> => {
-	if (!navigator.permissions || !navigator.mediaDevices) {
-		throw new DOMException(
-			'Navigator API: permissions or Navigator API: mediaDevices not supported',
-			'NotSupportedError'
-		)
+	if (!navigator.mediaDevices) {
+		throw new DOMException('Navigator API: mediaDevices not supported', 'NotSupportedError')
 	}
 
 	signal?.throwIfAborted()
 
-	// `query()` only lets us short-circuit a prior denial. Browsers that support the device but not
-	// querying its permission name (Firefox/Safari: `camera`/`microphone`) throw a `TypeError` here —
-	// fall through to `getUserMedia`, the real authority, which surfaces the prompt or rejects on its
-	// own. Any other query error propagates unchanged.
+	// `query()` only lets us short-circuit a prior denial — it's best-effort, not a prerequisite for
+	// acquiring the stream. Skip it entirely when the Permissions API is absent (e.g. older Safari):
+	// `getUserMedia` is the real authority and surfaces the prompt or rejects on its own. When it is
+	// present, a browser that supports the device but won't query its permission name (Firefox/Safari:
+	// `camera`/`microphone`) throws a `TypeError` here — fall through the same way. Any other query
+	// error propagates unchanged.
 	let denied = false
-	try {
-		denied = (await navigator.permissions.query({ name: permissionName })).state === 'denied'
-	} catch (error) {
-		if (!(error instanceof TypeError)) {
-			throw error
+	if (navigator.permissions) {
+		try {
+			denied = (await navigator.permissions.query({ name: permissionName })).state === 'denied'
+		} catch (error) {
+			if (!(error instanceof TypeError)) {
+				throw error
+			}
 		}
 	}
 
