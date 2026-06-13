@@ -1,3 +1,10 @@
+# [2.0.0-beta.20](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.19...v2.0.0-beta.20) (2026-06-13)
+
+
+### Bug Fixes
+
+* Make getUserMediaStream require only MediaDevices, not the Permissions API ([#173](https://github.com/untemps/user-permissions-utils/issues/173)) ([9cbc1e3](https://github.com/untemps/user-permissions-utils/commit/9cbc1e3a5c0da5355e3931a3ad9255acbefe65b8))
+
 # [2.0.0-beta.19](https://github.com/untemps/user-permissions-utils/compare/v2.0.0-beta.18...v2.0.0-beta.19) (2026-06-13)
 
 
