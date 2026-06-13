@@ -135,6 +135,14 @@ Trigger those yourself (e.g. `registration.pushManager.subscribe(...)`, `navigat
 
 Returns a promise resolved with the current permission state (`'granted'`, `'denied'` or `'prompt'`) immediately. Unlike `getPermission`, it never waits for user interaction and never rejects on `'denied'`. It rejects when the Permissions API is unsupported, and otherwise propagates any error from `navigator.permissions.query()` (e.g. an unrecognized permission name). Useful to read the current state upfront (show a permission banner, disable a button, branch UI logic) without triggering a prompt.
 
+Like `getPermission`, it accepts either a permission name or a full `PermissionQueryDescriptor`, so you can read permissions that need extra query members — notably `push`, which Chromium only queries with `userVisibleOnly: true`:
+
+```javascript
+import { checkPermission } from '@untemps/user-permissions-utils'
+
+const state = await checkPermission({ name: 'push', userVisibleOnly: true }) // 'granted' | 'denied' | 'prompt'
+```
+
 ```javascript
 import { checkPermission } from '@untemps/user-permissions-utils'
 
@@ -160,6 +168,8 @@ const init = async () => {
 Subscribes to a permission's live state and calls `onChange` on every transition. Where `checkPermission` reads the state **once** and `getPermission` waits a **single** time for `'granted'`, this is a **continuous observer**: it wraps `navigator.permissions.query()` and its `change` event, so you never reach for the raw browser API. Like `query()`, it never displays a dialog — it only reports the state as it changes (e.g. once `getUserMediaStream` or a dedicated getter surfaces the real prompt and the user responds).
 
 By default it emits the current state immediately (so a single call replaces a `checkPermission` read followed by a manual subscription), then on every `change`. Pass `emitImmediately: false` to receive transitions only.
+
+Like `getPermission` and `checkPermission`, the first argument is either a permission name or a full `PermissionQueryDescriptor`, so you can watch permissions that need extra query members — e.g. `watchPermission({ name: 'push', userVisibleOnly: true }, onChange)`.
 
 ```javascript
 import { watchPermission } from '@untemps/user-permissions-utils'
