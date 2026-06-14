@@ -12,8 +12,6 @@
 yarn add @untemps/user-permissions-utils
 ```
 
-**Requirements:** Node.js `>= 20`.
-
 ## Quick start
 
 ```javascript
@@ -336,7 +334,7 @@ nvm use
 yarn install
 ```
 
-Consumers only need Node `>= 20` (see [Installation](#installation)); the higher floor applies only to working on the project itself, so it lives in [`.nvmrc`](.nvmrc) rather than in `package.json`'s `engines` field (which states the runtime requirement for consumers).
+Consumers only need Node `>= 20`; the higher floor applies only to working on the project itself, so it lives in [`.nvmrc`](.nvmrc) rather than in `package.json`'s `engines` field (which states the runtime requirement for consumers).
 
 To launch the interactive demo (Vite dev server) and exercise the utilities against real browser permission prompts:
 
