@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/untemps/user-permissions-utils/compare/v2.0.0...v2.1.0) (2026-06-16)
+
+
+### Features
+
+* Expose a synchronous isMediaDevicesSupported() predicate ([#178](https://github.com/untemps/user-permissions-utils/issues/178)) ([f3a829e](https://github.com/untemps/user-permissions-utils/commit/f3a829e823e7acfe8ab8cbc535a287776c109213))
+
 # [2.0.0](https://github.com/untemps/user-permissions-utils/compare/v1.3.4...v2.0.0) (2026-06-13)
 
 
