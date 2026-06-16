@@ -64,9 +64,6 @@ const PERMISSIONS: PermissionEntry[] = [
 
 // Every browser API the dedicated getters rely on to surface a prompt — shown in the API Support card.
 const APIS: ApiSupport[] = [
-	// Both rows use the library's synchronous, SSR-safe predicates instead of poking `navigator`
-	// directly — each confirms the method the lib actually calls (`query` / `getUserMedia`), not just
-	// that the parent object exists.
 	{ label: 'Permissions', supported: isPermissionsSupported },
 	{ label: 'MediaDevices', supported: isMediaDevicesSupported },
 	{ label: 'Geolocation', supported: () => 'geolocation' in navigator },
