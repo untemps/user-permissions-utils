@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/untemps/user-permissions-utils/compare/v2.1.0...v2.2.0) (2026-06-16)
+
+
+### Features
+
+* Expose a synchronous isPermissionsSupported() predicate ([#180](https://github.com/untemps/user-permissions-utils/issues/180)) ([9178462](https://github.com/untemps/user-permissions-utils/commit/9178462f1756b1b7d1a70a979afb9376ccfe0d35))
+
 # [2.1.0](https://github.com/untemps/user-permissions-utils/compare/v2.0.0...v2.1.0) (2026-06-16)
 
 
