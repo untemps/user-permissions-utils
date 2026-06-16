@@ -1,8 +1,5 @@
 import isMediaDevicesSupported from '../isMediaDevicesSupported'
 
-// The predicate reads `globalThis.navigator` wholesale (including the SSR case where `navigator`
-// itself is undefined), so we stub the whole property rather than just `navigator.mediaDevices`.
-// Capture the real descriptor once and reinstate it after every test to avoid leaking globals.
 describe('isMediaDevicesSupported', () => {
 	const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
 
