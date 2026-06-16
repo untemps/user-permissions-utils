@@ -12,6 +12,7 @@ import {
 	getStorageAccessPermission,
 	checkPermission,
 	watchPermission,
+	isMediaDevicesSupported,
 	type GetPermissionOptions,
 	type PermissionQueryDescriptor,
 } from '../src/index'
@@ -63,7 +64,9 @@ const PERMISSIONS: PermissionEntry[] = [
 // Every browser API the dedicated getters rely on to surface a prompt — shown in the API Support card.
 const APIS: ApiSupport[] = [
 	{ label: 'Permissions', supported: () => 'permissions' in navigator },
-	{ label: 'MediaDevices', supported: () => 'mediaDevices' in navigator },
+	// Uses the library's synchronous, SSR-safe predicate instead of poking `navigator` directly —
+	// it also confirms `getUserMedia` is present, not just that `mediaDevices` exists.
+	{ label: 'MediaDevices', supported: isMediaDevicesSupported },
 	{ label: 'Geolocation', supported: () => 'geolocation' in navigator },
 	{ label: 'Notifications', supported: () => 'Notification' in window },
 	{ label: 'Web MIDI', supported: () => 'requestMIDIAccess' in navigator },
