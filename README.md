@@ -69,6 +69,7 @@ Two families of functions: those that only **observe** a permission state (they 
 | Function                                                | What it does                                       |
 | ------------------------------------------------------- | -------------------------------------------------- |
 | [`isMediaDevicesSupported`](#ismediadevicessupported)   | Test for `navigator.mediaDevices.getUserMedia`     |
+| [`isPermissionsSupported`](#ispermissionssupported)     | Test for `navigator.permissions.query`             |
 
 ## Concepts
 
@@ -94,13 +95,15 @@ Conversely, a few **active getters resolve without ever showing a dialog**: `per
 
 ### Errors and feature detection
 
-There are **no `is…Supported` helpers for the Permissions API**. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable: the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), or — for active getters — the native trigger API (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). **Every getter is guaranteed to reject with a `DOMException`**; even a missing trigger API is normalized rather than leaking a raw `TypeError`.
+The permission getters report unsupported APIs by **throwing**, not by returning a boolean. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable: the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), or — for active getters — the native trigger API (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). **Every getter is guaranteed to reject with a `DOMException`**; even a missing trigger API is normalized rather than leaking a raw `TypeError`.
 
 `getUserMediaStream` is the exception: it requires only MediaDevices and treats the Permissions API as **best-effort**. The query only lets it short-circuit a _previously denied_ permission; it isn't required to acquire a stream. On browsers that expose `navigator.mediaDevices.getUserMedia` but not `navigator.permissions` (e.g. older Safari), it skips the query and goes straight to `getUserMedia`.
 
-To probe **Permissions API** support upfront, call `checkPermission(name)` and catch: it rejects when the Permissions API is unsupported and propagates `query()` errors (e.g. an unrecognized permission name). `checkPermission` is the only function that surfaces the raw `query()` error — every other one normalizes it.
+For **upfront feature detection** the library ships two pure, synchronous, SSR-safe predicates — [`isPermissionsSupported()`](#ispermissionssupported) and [`isMediaDevicesSupported()`](#ismediadevicessupported) — that test whether `navigator.permissions.query` and `navigator.mediaDevices.getUserMedia` exist. Use them as synchronous precondition gates (a constructor, a computed property, conditional rendering) without touching `navigator` yourself or triggering a prompt.
 
-**MediaDevices** support is different: it's a synchronous property-presence check with no async browser API behind it, and `checkPermission` can't cover it (it probes `navigator.permissions`, not `navigator.mediaDevices`, and the device permission names aren't even queryable on Firefox/Safari). For that single case there _is_ a helper: [`isMediaDevicesSupported()`](#ismediadevicessupported) — a pure, synchronous, SSR-safe predicate. Use it to gate camera/microphone features without touching `navigator` yourself or triggering a prompt; keep `checkPermission` for reading a permission **state**.
+Detecting that the API **exists** is a different question from reading a permission **state**. A state (`'granted'` / `'denied'` / `'prompt'`) is irreducibly asynchronous — it lives outside the renderer (browser process, persistent storage, Permissions Policy) — so `checkPermission(name)` stays the only way to read it. `checkPermission` also makes a poor presence proxy: a non-queryable name (`camera`/`microphone` on Firefox) rejects with a `TypeError` even though `navigator.permissions` is present, so a rejection can't tell "API absent" from "this name isn't queryable." It does, however, surface the raw `query()` error — every other function normalizes it.
+
+For MediaDevices specifically, `checkPermission` can't substitute even in principle: it probes `navigator.permissions`, not `navigator.mediaDevices`, and the device permission names aren't queryable on Firefox/Safari — which is exactly why a synchronous property-presence predicate is the right (and only) shape there.
 
 ### Permission name or descriptor
 
@@ -332,7 +335,23 @@ if (isMediaDevicesSupported()) {
 }
 ```
 
-For reading a permission **state** (rather than detecting MediaDevices support), use [`checkPermission`](#checkpermission). There is intentionally no `isPermissionsSupported()` — `checkPermission` already covers the Permissions API (see [Errors and feature detection](#errors-and-feature-detection)).
+For reading a permission **state** (rather than detecting API support), use [`checkPermission`](#checkpermission); to detect the **Permissions API** itself, see [`isPermissionsSupported`](#ispermissionssupported) below.
+
+#### `isPermissionsSupported`
+
+Returns whether `navigator.permissions.query` is available — a **pure, synchronous, side-effect-free** predicate, symmetric to `isMediaDevicesSupported`. Use it as an upfront precondition gate ("is the Permissions API here at all?") from a constructor, a computed property, or conditional rendering, without wrapping `checkPermission` in a `try/catch` or poking `navigator` yourself. It tests `.query` — the method the library actually calls — rather than the mere presence of the `permissions` object. **SSR-safe** — it reads through `globalThis.navigator?.…`, returning `false` cleanly when there's no `navigator` global instead of throwing.
+
+```javascript
+import { isPermissionsSupported } from '@untemps/user-permissions-utils'
+
+if (isPermissionsSupported()) {
+	// safe to call checkPermission / getPermission / watchPermission
+} else {
+	// the Permissions API is unavailable — skip or show a fallback
+}
+```
+
+Detecting that the API **exists** is a different question from reading a permission **state**: a state is asynchronous by nature, so use [`checkPermission`](#checkpermission) for that — `isPermissionsSupported` only answers "is the API present?" (see [Errors and feature detection](#errors-and-feature-detection)).
 
 ## TypeScript
 
