@@ -13,6 +13,7 @@ import {
 	checkPermission,
 	watchPermission,
 	isMediaDevicesSupported,
+	isPermissionsSupported,
 	type GetPermissionOptions,
 	type PermissionQueryDescriptor,
 } from '../src/index'
@@ -63,7 +64,7 @@ const PERMISSIONS: PermissionEntry[] = [
 
 // Every browser API the dedicated getters rely on to surface a prompt — shown in the API Support card.
 const APIS: ApiSupport[] = [
-	{ label: 'Permissions', supported: () => 'permissions' in navigator },
+	{ label: 'Permissions', supported: isPermissionsSupported },
 	{ label: 'MediaDevices', supported: isMediaDevicesSupported },
 	{ label: 'Geolocation', supported: () => 'geolocation' in navigator },
 	{ label: 'Notifications', supported: () => 'Notification' in window },
