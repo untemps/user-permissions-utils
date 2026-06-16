@@ -64,6 +64,12 @@ Two families of functions: those that only **observe** a permission state (they 
 | ------------------------------------------- | ----------------------------------------------------- |
 | [`getUserMediaStream`](#getusermediastream) | Surface the prompt and resolve with the `MediaStream` |
 
+**Feature-detect an API** — synchronous, no side effects, never prompts:
+
+| Function                                                | What it does                                       |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| [`isMediaDevicesSupported`](#ismediadevicessupported)   | Test for `navigator.mediaDevices.getUserMedia`     |
+
 ## Concepts
 
 Read this once and the API reference is mostly self-explanatory.
@@ -88,11 +94,13 @@ Conversely, a few **active getters resolve without ever showing a dialog**: `per
 
 ### Errors and feature detection
 
-There are **no `is…Supported` helpers**. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable: the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), or — for active getters — the native trigger API (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). **Every getter is guaranteed to reject with a `DOMException`**; even a missing trigger API is normalized rather than leaking a raw `TypeError`.
+There are **no `is…Supported` helpers for the Permissions API**. Every function throws a `NotSupportedError` `DOMException` when the API it relies on is unavailable: the Permissions API (every function _except_ `getUserMediaStream`), MediaDevices (`getUserMediaStream`), or — for active getters — the native trigger API (e.g. `getMidiPermission` when `navigator.requestMIDIAccess` is missing). **Every getter is guaranteed to reject with a `DOMException`**; even a missing trigger API is normalized rather than leaking a raw `TypeError`.
 
 `getUserMediaStream` is the exception: it requires only MediaDevices and treats the Permissions API as **best-effort**. The query only lets it short-circuit a _previously denied_ permission; it isn't required to acquire a stream. On browsers that expose `navigator.mediaDevices.getUserMedia` but not `navigator.permissions` (e.g. older Safari), it skips the query and goes straight to `getUserMedia`.
 
-To probe support upfront, call `checkPermission(name)` and catch: it rejects when the Permissions API is unsupported and propagates `query()` errors (e.g. an unrecognized permission name). `checkPermission` is the only function that surfaces the raw `query()` error — every other one normalizes it.
+To probe **Permissions API** support upfront, call `checkPermission(name)` and catch: it rejects when the Permissions API is unsupported and propagates `query()` errors (e.g. an unrecognized permission name). `checkPermission` is the only function that surfaces the raw `query()` error — every other one normalizes it.
+
+**MediaDevices** support is different: it's a synchronous property-presence check with no async browser API behind it, and `checkPermission` can't cover it (it probes `navigator.permissions`, not `navigator.mediaDevices`, and the device permission names aren't even queryable on Firefox/Safari). For that single case there _is_ a helper: [`isMediaDevicesSupported()`](#ismediadevicessupported) — a pure, synchronous, SSR-safe predicate. Use it to gate camera/microphone features without touching `navigator` yourself or triggering a prompt; keep `checkPermission` for reading a permission **state**.
 
 ### Permission name or descriptor
 
@@ -307,6 +315,24 @@ const init = async () => {
 	}
 }
 ```
+
+### Feature detection
+
+#### `isMediaDevicesSupported`
+
+Returns whether `navigator.mediaDevices.getUserMedia` is available — a **pure, synchronous, side-effect-free** predicate. Unlike `checkPermission` (which reads a permission _state_ asynchronously through `navigator.permissions`), this is the right shape for MediaDevices: there's no async browser API to await, just a property-presence test. It never touches the device nor surfaces a prompt, so it's safe to call eagerly to gate camera/microphone UI. **SSR-safe** — it reads through `globalThis.navigator?.…`, returning `false` cleanly when there's no `navigator` global instead of throwing.
+
+```javascript
+import { isMediaDevicesSupported } from '@untemps/user-permissions-utils'
+
+if (isMediaDevicesSupported()) {
+	// safe to offer camera/microphone features — call getUserMediaStream on user intent
+} else {
+	// hide the control or show a fallback; no prompt, no navigator access required
+}
+```
+
+For reading a permission **state** (rather than detecting MediaDevices support), use [`checkPermission`](#checkpermission). There is intentionally no `isPermissionsSupported()` — `checkPermission` already covers the Permissions API (see [Errors and feature detection](#errors-and-feature-detection)).
 
 ## TypeScript
 
