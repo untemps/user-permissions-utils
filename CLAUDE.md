@@ -68,5 +68,5 @@ Trois workflows GitHub Actions dans `.github/workflows/` :
 
 ## Release
 
-Semantic-release gère versioning + changelog + publish npm automatiquement depuis la CI sur push `main` (canal stable) et `beta` (canal pré-release : ex. `2.0.0-beta.1` publié sous le tag npm `beta`). Les commits de type `chore` déclenchent un patch release (règle custom dans `package.json`).
+Semantic-release gère versioning + changelog + publish npm + **GitHub Releases** automatiquement depuis la CI sur push `main` (canal stable) et `beta` (canal pré-release : ex. `2.0.0-beta.1` publié sous le tag npm `beta`). La chaîne de plugins (dans `package.json` → `release.plugins`) est : `commit-analyzer` → `release-notes-generator` → `changelog` → `npm` → `github` → `git` (l'ordre importe : `git` doit rester **dernier** pour committer les assets préparés — `CHANGELOG.md` + `package.json` — et `github` crée la GitHub Release + commente les PR/issues associées). `@semantic-release/github` est fourni de façon transitive par `semantic-release` (comme `commit-analyzer`/`release-notes-generator`/`npm`), donc **pas** déclaré dans `devDependencies` ; seuls les plugins non-bundlés (`changelog`, `git`) le sont. Les commits de type `chore` déclenchent un patch release (règle custom dans `package.json`).
 
