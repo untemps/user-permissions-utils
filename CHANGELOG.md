@@ -1,3 +1,5 @@
+## [2.2.20](https://github.com/untemps/user-permissions-utils/compare/v2.2.19...v2.2.20) (2026-09-15)
+
 ## [2.2.19](https://github.com/untemps/user-permissions-utils/compare/v2.2.18...v2.2.19) (2026-09-12)
 
 ## [2.2.18](https://github.com/untemps/user-permissions-utils/compare/v2.2.17...v2.2.18) (2026-09-03)
